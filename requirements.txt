@@ -1,0 +1,14 @@
+# Requirements for Data Science, ML, Flask API, and Real-Time Processing
+
+pandas
+scikit-learn
+tensorflow
+flask
+numpy
+matplotlib
+seaborn
+requests
+jupyter
+scipy
+beautifulsoup4
+pyyaml
