@@ -373,7 +373,7 @@ def run_advanced_analytics():
         'total_interactions': np.random.randint(1, 100, n_users),
         'unique_actions': np.random.randint(1, 10, n_users),
         'success_rate': np.random.uniform(0.3, 1.0, n_users),
-        'session_duration_mean': np.random.exponential(scale=15, n_users),
+        'session_duration_mean': np.random.exponential(scale=15, size=n_users),
         'action_diversity_ratio': np.random.uniform(0.1, 1.0, n_users),
         'pct_advanced_premium': np.random.uniform(0, 0.8, n_users),
         'days_active': np.random.randint(1, 90, n_users),
