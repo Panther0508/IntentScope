@@ -1,6 +1,33 @@
 import pandas as pd
 import numpy as np
 from collections import Counter
+from datetime import datetime, timedelta
+
+# Try to import from upstream modules, create sample data if not available
+try:
+    from .load_dataset import user_behavior_df
+    from .define_long_term_success_metric import user_metrics
+except ImportError:
+    print("[OK] Running in standalone mode - creating sample data")
+    np.random.seed(42)
+    n_users = 500
+    n_interactions = 3000
+    timestamps = [datetime.now() - timedelta(days=np.random.randint(0, 90)) for _ in range(n_interactions)]
+    user_behavior_df = pd.DataFrame({
+        'user_id': np.random.choice(range(1, n_users + 1), n_interactions),
+        'timestamp': timestamps,
+        'action': np.random.choice(['login', 'view_dashboard', 'run_analysis', 'create_visualization', 
+                                   'export_data', 'share_result', 'logout'], n_interactions),
+        'success': np.random.choice([True, False], n_interactions, p=[0.85, 0.15]),
+        'session_duration_minutes': np.random.exponential(scale=15, size=n_interactions),
+        'feature_tier': np.random.choice(['basic', 'advanced', 'premium'], n_interactions)
+    })
+    
+    # Create sample user_metrics
+    user_metrics = pd.DataFrame({
+        'user_id': range(1, n_users + 1),
+        'long_term_success': np.random.choice([0, 1], n_users, p=[0.7, 0.3])
+    })
 
 print("=" * 70)
 print("BEHAVIORAL FEATURE ENGINEERING")

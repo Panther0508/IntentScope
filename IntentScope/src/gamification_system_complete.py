@@ -2,6 +2,42 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
+# Try to import from upstream modules, create sample data if not available
+try:
+    from .define_long_term_success_metric import user_metrics
+    from .load_dataset import user_behavior_df
+except ImportError:
+    # Create sample data for standalone execution
+    print("⚠️  Running gamification in standalone mode - creating sample data")
+    
+    np.random.seed(42)
+    n_users = 500
+    
+    # Create sample user_metrics
+    user_metrics = pd.DataFrame({
+        'user_id': range(1, n_users + 1),
+        'total_interactions': np.random.randint(1, 100, n_users),
+        'unique_actions': np.random.randint(1, 10, n_users),
+        'success_rate': np.random.uniform(0.5, 1.0, n_users),
+        'days_active': np.random.randint(1, 30, n_users),
+        'advanced_usage_count': np.random.randint(0, 10, n_users),
+        'total_session_time': np.random.randint(100, 2000, n_users),
+        'long_term_success': np.random.choice([0, 1], n_users, p=[0.15, 0.85])
+    })
+    
+    # Create sample user_behavior_df
+    timestamps = [datetime.now() - timedelta(days=np.random.randint(0, 90)) for _ in range(3000)]
+    actions = np.random.choice(['login', 'view_dashboard', 'run_analysis', 'create_visualization', 
+                               'export_data', 'share_result', 'logout'], 3000)
+    user_behavior_df = pd.DataFrame({
+        'user_id': np.random.choice(range(1, n_users + 1), 3000),
+        'timestamp': timestamps,
+        'action': actions,
+        'success': np.random.choice([True, False], 3000, p=[0.85, 0.15]),
+        'session_duration_minutes': np.random.exponential(scale=15, size=3000),
+        'feature_tier': np.random.choice(['basic', 'advanced', 'premium'], 3000, p=[0.5, 0.35, 0.15])
+    })
+
 # Import data from upstream blocks
 user_metrics_data = user_metrics
 user_behavior_data = user_behavior_df

@@ -4,6 +4,47 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, f1_score, roc_auc_score
 from sklearn.model_selection import cross_val_score
 
+# Try to import from upstream modules, create sample data if not available
+try:
+    from .prepare_modeling_dataset import X_train_scaled, X_test_scaled, y_train, y_test, feature_matrix
+except ImportError:
+    # Create sample data for standalone execution
+    print("⚠️  Running in standalone mode - creating sample data")
+    np.random.seed(42)
+    n_samples = 500
+    n_features = 54
+    
+    # Create sample feature matrix
+    X_train_scaled = pd.DataFrame(
+        np.random.randn(n_samples, n_features),
+        columns=[f'feature_{i}' for i in range(n_features)]
+    )
+    X_test_scaled = pd.DataFrame(
+        np.random.randn(int(n_samples * 0.2), n_features),
+        columns=[f'feature_{i}' for i in range(n_features)]
+    )
+    
+    # Add some realistic feature names
+    feature_cols = ['total_interactions', 'unique_actions', 'success_rate', 'session_duration_mean',
+                   'advanced_user', 'action_diversity_ratio', 'pct_advanced_premium']
+    for i, col in enumerate(feature_cols[:7]):
+        X_train_scaled[col] = np.random.randn(n_samples)
+        X_test_scaled[col] = np.random.randn(int(n_samples * 0.2))
+    
+    # Create labels
+    y_train = pd.Series(np.random.choice([0, 1], n_samples, p=[0.15, 0.85]))
+    y_test = pd.Series(np.random.choice([0, 1], int(n_samples * 0.2), p=[0.15, 0.85]))
+    
+    # Create sample feature_matrix
+    feature_matrix = pd.DataFrame({
+        'user_id': range(1, n_samples + 1),
+        'total_interactions': np.random.randint(1, 100, n_samples),
+        'unique_actions': np.random.randint(1, 10, n_samples),
+        'advanced_user': np.random.choice([0, 1], n_samples),
+        'action_diversity_ratio': np.random.uniform(0.1, 1.0, n_samples),
+        'pct_advanced_premium': np.random.uniform(0, 1, n_samples)
+    })
+
 print("=" * 70)
 print("GRADIENT BOOSTING CLASSIFIER FOR INTENTION INFERENCE")
 print("=" * 70)

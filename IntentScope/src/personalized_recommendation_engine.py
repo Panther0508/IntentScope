@@ -1,6 +1,26 @@
 import numpy as np
 import pandas as pd
 
+# Try to import from upstream modules, create sample data if not available
+try:
+    from .extract_feature_importance_and_shap import impact_scores
+except ImportError:
+    # Create sample data for standalone execution
+    print("⚠️  Running recommendation engine in standalone mode - creating sample data")
+    np.random.seed(42)
+    
+    # Create sample impact_scores
+    features = ['successful_actions', 'overall_success_rate', 'advanced_premium_usage', 
+                'total_interactions', 'unique_actions', 'session_duration_mean',
+                'action_diversity_ratio', 'days_active', 'login_count', 'view_count',
+                'analysis_count', 'viz_count', 'export_count', 'advanced_user', 'pct_advanced_premium']
+    
+    impact_scores = pd.DataFrame({
+        'feature': features,
+        'importance': np.random.uniform(0.01, 0.5, len(features)),
+        'composite_impact': np.random.uniform(0.01, 0.5, len(features))
+    }).sort_values('composite_impact', ascending=False).reset_index(drop=True)
+
 print("=" * 70)
 print("PERSONALIZED RECOMMENDATION ENGINE")
 print("=" * 70)

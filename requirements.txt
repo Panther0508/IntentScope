@@ -1,14 +1,39 @@
-# Requirements for Data Science, ML, Flask API, and Real-Time Processing
+# Requirements for IntentScope - Behavioral Analytics Platform
+# Production-ready ML pipeline with real-time streaming inference
 
-pandas
-scikit-learn
-tensorflow
-flask
-numpy
-matplotlib
-seaborn
-requests
-jupyter
-scipy
-beautifulsoup4
-pyyaml
+# Core Data Science & ML
+pandas>=1.5.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+scipy>=1.7.0
+
+# Deep Learning (LSTM for intention classification)
+tensorflow-cpu>=2.12.0
+keras>=2.12.0
+
+# Visualization
+matplotlib>=3.5.0
+seaborn>=0.11.0
+plotly>=5.10.0
+
+# Web Framework & API
+flask>=2.2.0
+flask-cors>=3.0.10
+
+# Data Processing
+beautifulsoup4>=4.11.0
+
+# Configuration
+pyyaml>=6.0
+
+# Utilities
+requests>=2.28.0
+jupyter>=1.0.0
+
+# Optional: For enhanced ML features
+xgboost>=1.6.0
+lightgbm>=4.0.0
+
+# Real-time streaming
+redis>=4.5.0
+websockets>=10.0.0

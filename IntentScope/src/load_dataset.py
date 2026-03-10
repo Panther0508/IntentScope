@@ -40,7 +40,7 @@ user_behavior_df = pd.DataFrame({
 # Sort by timestamp
 user_behavior_df = user_behavior_df.sort_values('timestamp').reset_index(drop=True)
 
-print("✓ Dataset loaded successfully")
+print("[OK] Dataset loaded successfully")
 print(f"\nDataset shape: {user_behavior_df.shape}")
 print(f"Date range: {user_behavior_df['timestamp'].min().date()} to {user_behavior_df['timestamp'].max().date()}")
 print(f"Total interactions: {len(user_behavior_df):,}")
