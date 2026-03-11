@@ -599,11 +599,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📧 Email: support@intentscope.io
-- 📖 Documentation: https://docs.intentscope.io
-- 💬 Discord: https://discord.gg/intentscope
-- 🐛 Issues: https://github.com/intentscope/intentscope/issues
-
+- 📧 Email: nmesirionyengbaronye@gmail.com
 ---
 
 <p align="center">Built with ❤️ for behavioral analytics</p>
