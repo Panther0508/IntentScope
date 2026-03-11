@@ -171,9 +171,8 @@ def api_status():
 
 if __name__ == '__main__':
     print("=" * 60)
-    print("🚀 IntentScope Live Preview Server")
     print("=" * 60)
-    print("🌐 Open your browser to: http://127.0.0.1:5000")
+    print("Open your browser to: http://127.0.0.1:5000")
     print("=" * 60)
     
     port = int(os.environ.get('PORT', 5000))
