@@ -4,11 +4,14 @@ services:
     env: python
     region: oregon
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     runtime: python311
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
-      - key: PORT
-        value: 10000
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        value: "change-this-in-production-use-environment-variable"
     autoDeploy: true
+    healthCheckPath: /health
