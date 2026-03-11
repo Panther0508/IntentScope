@@ -15,9 +15,10 @@ matplotlib>=3.10.8
 seaborn>=0.13.0
 plotly>=5.20.0
 
-# Web Framework & API
+# Web Framework & API (Flask for SaaS hosting)
 flask>=3.0.0
 flask-cors>=4.0.0
+gunicorn>=21.0.0
 
 # Data Processing
 beautifulsoup4>=4.12.0

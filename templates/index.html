@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+
+{% block title %}IntentScope - AI Analytics Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .metric-card {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #667eea;
+    }
+
+    .metric-label {
+        color: #a0a0a0;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+
+    .chart-container {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .user-table {
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 15px;
+        padding: 20px;
+    }
+
+    .badge-builder {
+        background: #10b981;
+    }
+
+    .badge-explorer {
+        background: #3b82f6;
+    }
+
+    .badge-learner {
+        background: #f59e0b;
+    }
+
+    .badge-abandoner {
+        background: #ef4444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-8">
+                <h1 class="display-4 fw-bold">AI-Powered Behavioral Analytics</h1>
+                <p class="lead">Real-time user intention prediction and behavioral insights for your platform</p>
+            </div>
+            <div class="col-lg-4 text-lg-end">
+                <button class="btn btn-primary btn-lg">
+                    <i class="fas fa-play me-2"></i>Live Demo
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Metrics Section -->
+<section class="py-4">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="totalUsers">-</div>
+                    <div class="metric-label">Total Users</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="activeUsers">-</div>
+                    <div class="metric-label">Active Now</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="successRate">-</div>
+                    <div class="metric-label">Success Rate</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="churnRate">-</div>
+                    <div class="metric-label">Churn Rate</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="anomalies">-</div>
+                    <div class="metric-label">Anomalies</div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="metric-card text-center">
+                    <div class="metric-value" id="predictions">-</div>
+                    <div class="metric-label">Predictions</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Charts Section -->
+<section class="py-4" id="analytics">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-pie me-2"></i>Intention Distribution</h4>
+                    <canvas id="intentionChart"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-bar me-2"></i>User Segments</h4>
+                    <canvas id="segmentChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="chart-container">
+                    <h4><i class="fas fa-chart-line me-2"></i>Feature Importance</h4>
+                    <canvas id="featureChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Live Users Table -->
+<section class="py-4" id="predictions">
+    <div class="container">
+        <div class="user-table">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4><i class="fas fa-users me-2"></i>Live User Activity</h4>
+                <button class="btn btn-sm btn-outline-light" onclick="refreshData()">
+                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-dark table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Interactions</th>
+                            <th>Success Rate</th>
+                            <th>Churn Risk</th>
+                            <th>Segment</th>
+                            <th>Last Active</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let intentionChart, segmentChart, featureChart;
+
+    // Initialize charts
+    function initCharts(intentionData, featureData, segmentData) {
+        // Intention Distribution Chart
+        const intentionCtx = document.getElementById('intentionChart').getContext('2d');
+        intentionChart = new Chart(intentionCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(intentionData),
+                datasets: [{
+                    data: Object.values(intentionData),
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom', labels: { color: '#fff' } }
+                }
+            }
+        });
+
+        // Segment Chart
+        const segmentCtx = document.getElementById('segmentChart').getContext('2d');
+        segmentChart = new Chart(segmentCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(segmentData),
+                datasets: [{
+                    label: 'Users',
+                    data: Object.values(segmentData),
+                    backgroundColor: ['#667eea', '#764ba2', '#f59e0b', '#ef4444']
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                }
+            }
+        });
+
+        // Feature Importance Chart
+        const featureCtx = document.getElementById('featureChart').getContext('2d');
+        featureChart = new Chart(featureCtx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(featureData),
+                datasets: [{
+                    label: 'Importance',
+                    data: Object.values(featureData),
+                    backgroundColor: '#667eea'
+                }]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                },
+                scales: {
+                    y: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                    x: { ticks: { color: '#fff' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                }
+            }
+        });
+    }
+
+    // Update charts
+    function updateCharts(intentionData, featureData, segmentData) {
+        intentionChart.data.labels = Object.keys(intentionData);
+        intentionChart.data.datasets[0].data = Object.values(intentionData);
+        intentionChart.update();
+
+        segmentChart.data.labels = Object.keys(segmentData);
+        segmentChart.data.datasets[0].data = Object.values(segmentData);
+        segmentChart.update();
+
+        featureChart.data.labels = Object.keys(featureData);
+        featureChart.data.datasets[0].data = Object.values(featureData);
+        featureChart.update();
+    }
+
+    // Populate metrics
+    function updateMetrics(metrics) {
+        document.getElementById('totalUsers').textContent = metrics.total_users.toLocaleString();
+        document.getElementById('activeUsers').textContent = metrics.active_users.toLocaleString();
+        document.getElementById('successRate').textContent = (metrics.avg_success_rate * 100).toFixed(1) + '%';
+        document.getElementById('churnRate').textContent = (metrics.churn_rate * 100).toFixed(1) + '%';
+        document.getElementById('anomalies').textContent = metrics.anomalies_detected;
+        document.getElementById('predictions').textContent = metrics.predictions_made.toLocaleString();
+    }
+
+    // Populate user table
+    function updateUserTable(users) {
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = users.map(user => `
+            <tr>
+                <td>${user.id}</td>
+                <td>${user.name}</td>
+                <td><span class="badge badge-${user.type.toLowerCase()}">${user.type}</span></td>
+                <td>${user.interactions}</td>
+                <td>${(user.success_rate * 100).toFixed(0)}%</td>
+                <td>${(user.churn_risk * 100).toFixed(0)}%</td>
+                <td>${user.segment}</td>
+                <td>${new Date(user.last_active).toLocaleTimeString()}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Fetch and update data
+    async function refreshData() {
+        try {
+            const response = await fetch('/api/data');
+            const data = await response.json();
+
+            updateMetrics(data.metrics);
+            updateUserTable(data.users);
+            updateCharts(data.intention_dist, data.feature_importance, data.segment_data);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+        await refreshData();
+
+        // Auto-refresh every 5 seconds
+        setInterval(refreshData, 5000);
+    });
+</script>
+{% endblock %}

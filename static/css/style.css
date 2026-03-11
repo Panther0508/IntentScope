@@ -1,0 +1,325 @@
+/* IntentScope - AI Analytics Dashboard Styles */
+
+/* Base Styles */
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --bg-dark: #1a1a2e;
+    --bg-darker: #16213e;
+    --bg-darkest: #0f3460;
+    --text-light: #ffffff;
+    --text-muted: #a0a0a0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 50%, var(--bg-darkest) 100%);
+    color: var(--text-light);
+    min-height: 100vh;
+}
+
+/* Navbar Styles */
+.navbar {
+    background: rgba(26, 26, 46, 0.95) !important;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.3);
+    padding: 15px 0;
+}
+
+.navbar-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color) !important;
+}
+
+.navbar-brand i {
+    color: var(--primary-color);
+}
+
+.nav-link {
+    color: var(--text-light) !important;
+    font-weight: 500;
+    padding: 8px 15px !important;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    background: rgba(102, 126, 234, 0.2);
+    color: var(--primary-color) !important;
+}
+
+.nav-link.active {
+    background: rgba(102, 126, 234, 0.3);
+    color: var(--primary-color) !important;
+}
+
+/* Hero Section */
+.hero-section {
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 100%);
+    padding: 60px 0;
+    border-bottom: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.hero-section h1 {
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.hero-section .lead {
+    color: var(--text-muted);
+    font-size: 1.2rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    border: none;
+    padding: 12px 30px;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+/* Metric Cards */
+.metric-card {
+    background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-darker) 50%, var(--bg-darkest) 100%);
+    border-radius: 15px;
+    padding: 25px 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--primary-color);
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.metric-label {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 5px;
+}
+
+/* Chart Containers */
+.chart-container {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    padding: 25px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.chart-container h4 {
+    color: var(--text-light);
+    margin-bottom: 20px;
+    font-weight: 600;
+}
+
+.chart-container h4 i {
+    color: var(--primary-color);
+}
+
+/* User Table */
+.user-table {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-table h4 {
+    color: var(--text-light);
+}
+
+.user-table h4 i {
+    color: var(--primary-color);
+}
+
+.table-dark {
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: rgba(255, 255, 255, 0.02);
+    --bs-table-hover-bg: rgba(102, 126, 234, 0.1);
+}
+
+.table {
+    color: var(--text-light);
+}
+
+.table thead th {
+    border-bottom: 2px solid var(--primary-color);
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+
+.table td {
+    border-color: rgba(255, 255, 255, 0.1);
+    vertical-align: middle;
+}
+
+/* Badge Styles */
+.badge {
+    padding: 6px 12px;
+    font-weight: 600;
+    border-radius: 20px;
+}
+
+.badge-builder {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+.badge-explorer {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+}
+
+.badge-learner {
+    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
+.badge-abandoner {
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+
+/* Footer */
+.footer {
+    background: rgba(26, 26, 46, 0.95);
+    padding: 50px 0 20px;
+    margin-top: 50px;
+    border-top: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.footer h5 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+}
+
+.footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer a:hover {
+    color: var(--primary-color);
+}
+
+.social-links {
+    display: flex;
+    gap: 15px;
+}
+
+.social-links a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+    background: var(--primary-color);
+    transform: translateY(-3px);
+}
+
+.footer hr {
+    border-color: rgba(255, 255, 255, 0.1);
+    margin: 30px 0;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 40px 0;
+    }
+
+    .hero-section h1 {
+        font-size: 2rem;
+    }
+
+    .metric-value {
+        font-size: 1.8rem;
+    }
+
+    .metric-card {
+        padding: 15px;
+    }
+}
+
+/* Button Styles */
+.btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: var(--text-light);
+}
+
+.btn-outline-light:hover {
+    background: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Animation Keyframes */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.loading {
+    animation: pulse 1.5s infinite;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary-color);
+}

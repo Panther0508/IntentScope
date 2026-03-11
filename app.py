@@ -3,7 +3,7 @@ IntentScope Live Preview Web Application
 A real-time dashboard showing the AI-powered behavioral analytics system
 """
 
-from flask import Flask, render_template_string, jsonify, request
+from flask import Flask, render_template, jsonify, request
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
@@ -529,7 +529,29 @@ HTML_TEMPLATE = '''
 
 @app.route('/')
 def index():
-    return render_template_string(HTML_TEMPLATE)
+    return render_template('index.html')
+
+@app.route('/api/data')
+def api_data():
+    """Combined API for dashboard data"""
+    return jsonify({
+        'metrics': generate_metrics(),
+        'users': generate_live_users(),
+        'intention_dist': generate_intention_distribution(),
+        'feature_importance': generate_feature_importance(),
+        'segment_data': {
+            'Premium': random.randint(280, 380),
+            'Regular': random.randint(1100, 1400),
+            'New': random.randint(500, 700),
+            'At-Risk': random.randint(100, 200)
+        },
+        'activity_data': {
+            'labels': ['6am', '8am', '10am', '12pm', '2pm', '4pm', '6pm', '8pm', '10pm'],
+            'values': [random.randint(100, 200), random.randint(200, 350), random.randint(300, 450), 
+                      random.randint(450, 600), random.randint(400, 550), random.randint(350, 500),
+                      random.randint(300, 450), random.randint(200, 350), random.randint(100, 250)]
+        }
+    })
 
 @app.route('/api/init')
 def api_init():
@@ -577,4 +599,8 @@ if __name__ == '__main__':
     print("=" * 60)
     print("🌐 Open your browser to: http://127.0.0.1:5000")
     print("=" * 60)
-    app.run(debug=True, port=5000)
+    import os
+port = int(os.environ.get('PORT', 5000))
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=port, debug=False)
