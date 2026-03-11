@@ -1,21 +1,17 @@
-# Requirements for IntentScope - Behavioral Analytics Platform
+# IntentScope - Flask SaaS Application
 
-# Core Data Science & ML (compatible with Python 3.14)
+# Core Data Science & ML
 pandas>=2.0.0
 numpy>=1.26.0
 scikit-learn>=1.5.0
 scipy>=1.13.0
 
-# Deep Learning - Install manually if needed
-# tensorflow-cpu>=2.15.0
-# keras>=3.0.0
-
 # Visualization
-matplotlib>=3.10.8
+matplotlib>=3.8.0
 seaborn>=0.13.0
 plotly>=5.20.0
 
-# Web Framework & API (Flask for SaaS hosting)
+# Web Framework & API
 flask>=3.0.0
 flask-cors>=4.0.0
 gunicorn>=21.0.0
@@ -28,11 +24,8 @@ pyyaml>=6.0
 
 # Utilities
 requests>=2.32.0
+python-dateutil>=2.8.2
 
-# Optional: For enhanced ML features
-xgboost>=2.0.0
-lightgbm>=4.0.0
-
-# Real-time streaming (optional)
-redis>=5.0.0
-websockets>=12.0.0
+# Optional ML (uncomment if needed)
+# tensorflow-cpu>=2.15.0
+# keras>=3.0.0
