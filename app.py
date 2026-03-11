@@ -1,17 +1,26 @@
 """
 IntentScope Live Preview Web Application
 A real-time dashboard showing the AI-powered behavioral analytics system
+with folder upload and code execution capabilities
 """
 
 import os
 import logging
-from flask import Flask, render_template, jsonify, request
+import uuid
+import shutil
+import subprocess
+import sys
+import ast
+import json
+from flask import Flask, render_template, jsonify, request, send_from_directory, redirect, url_for
 from flask_cors import CORS
 import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 import random
 import time
+import zipfile
+import io
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,11 +31,253 @@ app = Flask(__name__)
 # Security configuration
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 app.config['JSON_SORT_KEYS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max upload
 
 # Enable CORS for all routes
 CORS(app)
 
-# Sample data generators
+# Upload folder configuration
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+# Allowed extensions for upload
+ALLOWED_EXTENSIONS = {
+    'txt', 'py', 'js', 'html', 'css', 'json', 'xml', 'md', 'yaml', 'yml',
+    'csv', 'txt', 'log', 'sh', 'bat', 'ps1', 'sql', 'r', 'java', 'c', 'cpp',
+    'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'scala', 'ts'
+}
+
+# Store execution results in memory
+execution_results = {}
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed"""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def get_folder_size(folder_path):
+    """Calculate total size of folder"""
+    total_size = 0
+    for dirpath, dirnames, filenames in os.walk(folder_path):
+        for filename in filenames:
+            filepath = os.path.join(dirpath, filename)
+            if os.path.exists(filepath):
+                total_size += os.path.getsize(filepath)
+    return total_size
+
+
+def format_size(size_bytes):
+    """Format bytes to human readable format"""
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if size_bytes < 1024.0:
+            return f"{size_bytes:.2f} {unit}"
+        size_bytes /= 1024.0
+    return f"{size_bytes:.2f} TB"
+
+
+def scan_project_structure(folder_path):
+    """Scan and return project structure"""
+    structure = {
+        'name': os.path.basename(folder_path),
+        'path': folder_path,
+        'type': 'folder',
+        'children': []
+    }
+    
+    try:
+        items = sorted(os.listdir(folder_path))
+        for item in items:
+            # Skip hidden files and common temp directories
+            if item.startswith('.') or item in ['__pycache__', 'node_modules', 'venv', '.git']:
+                continue
+                
+            item_path = os.path.join(folder_path, item)
+            if os.path.isdir(item_path):
+                structure['children'].append(scan_project_structure(item_path))
+            else:
+                if allowed_file(item):
+                    size = os.path.getsize(item_path)
+                    structure['children'].append({
+                        'name': item,
+                        'path': item_path,
+                        'type': 'file',
+                        'size': format_size(size),
+                        'size_bytes': size
+                    })
+    except PermissionError:
+        pass
+    
+    return structure
+
+
+def analyze_project(folder_path):
+    """Analyze project and return metadata"""
+    analysis = {
+        'total_files': 0,
+        'total_folders': 0,
+        'total_size': 0,
+        'file_types': {},
+        'languages': {},
+        'main_files': []
+    }
+    
+    # Language detection mapping
+    language_map = {
+        'py': 'Python',
+        'js': 'JavaScript',
+        'html': 'HTML',
+        'css': 'CSS',
+        'json': 'JSON',
+        'xml': 'XML',
+        'md': 'Markdown',
+        'yaml': 'YAML',
+        'yml': 'YAML',
+        'csv': 'CSV',
+        'sql': 'SQL',
+        'r': 'R',
+        'java': 'Java',
+        'c': 'C',
+        'cpp': 'C++',
+        'h': 'C/C++ Header',
+        'hpp': 'C++ Header',
+        'cs': 'C#',
+        'go': 'Go',
+        'rs': 'Rust',
+        'rb': 'Ruby',
+        'php': 'PHP',
+        'swift': 'Swift',
+        'kt': 'Kotlin',
+        'scala': 'Scala',
+        'ts': 'TypeScript'
+    }
+    
+    for root, dirs, files in os.walk(folder_path):
+        # Skip hidden and temp directories
+        dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', 'node_modules', 'venv']]
+        
+        analysis['total_folders'] += len(dirs)
+        
+        for file in files:
+            if file.startswith('.'):
+                continue
+                
+            file_path = os.path.join(root, file)
+            ext = file.rsplit('.', 1)[-1].lower() if '.' in file else ''
+            
+            analysis['total_files'] += 1
+            
+            if os.path.exists(file_path):
+                size = os.path.getsize(file_path)
+                analysis['total_size'] += size
+                
+                if ext:
+                    analysis['file_types'][ext] = analysis['file_types'].get(ext, 0) + 1
+                    lang = language_map.get(ext, ext.upper())
+                    analysis['languages'][lang] = analysis['languages'].get(lang, 0) + 1
+                
+                # Identify main files
+                main_file_patterns = ['main', 'index', 'app', 'server', 'setup', 'run']
+                if any(pattern in file.lower() for pattern in main_file_patterns):
+                    rel_path = os.path.relpath(file_path, folder_path)
+                    analysis['main_files'].append({
+                        'name': file,
+                        'path': rel_path,
+                        'size': format_size(size)
+                    })
+    
+    analysis['total_size_formatted'] = format_size(analysis['total_size'])
+    return analysis
+
+
+def execute_python_file(file_path, project_folder):
+    """Execute a Python file and return output"""
+    result = {
+        'success': False,
+        'output': '',
+        'error': '',
+        'execution_time': 0
+    }
+    
+    start_time = time.time()
+    
+    try:
+        # Create a restricted environment for execution
+        env = os.environ.copy()
+        env['PYTHONPATH'] = project_folder
+        
+        # Run with timeout
+        process = subprocess.run(
+            [sys.executable, file_path],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=project_folder,
+            env=env
+        )
+        
+        result['success'] = process.returncode == 0
+        result['output'] = process.stdout
+        result['error'] = process.stderr
+        
+    except subprocess.TimeoutExpired:
+        result['error'] = 'Execution timed out (30 second limit)'
+    except Exception as e:
+        result['error'] = str(e)
+    
+    result['execution_time'] = round(time.time() - start_time, 3)
+    return result
+
+
+def execute_javascript_file(file_path, project_folder):
+    """Execute a JavaScript file using Node.js"""
+    result = {
+        'success': False,
+        'output': '',
+        'error': '',
+        'execution_time': 0
+    }
+    
+    start_time = time.time()
+    
+    try:
+        process = subprocess.run(
+            ['node', file_path],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=project_folder
+        )
+        
+        result['success'] = process.returncode == 0
+        result['output'] = process.stdout
+        result['error'] = process.stderr
+        
+    except subprocess.TimeoutExpired:
+        result['error'] = 'Execution timed out (30 second limit)'
+    except FileNotFoundError:
+        result['error'] = 'Node.js not installed'
+    except Exception as e:
+        result['error'] = str(e)
+    
+    result['execution_time'] = round(time.time() - start_time, 3)
+    return result
+
+
+def read_file_content(file_path, max_size=1024*1024):
+    """Read file content with size limit"""
+    try:
+        if os.path.getsize(file_path) > max_size:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                return f.read(max_size) + f"\n\n... (file truncated, showing first {format_size(max_size)})"
+        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            return f.read()
+    except Exception as e:
+        return f"Error reading file: {str(e)}"
+
+
+# Sample data generators (existing functionality)
 def generate_live_users():
     """Generate live user data for the dashboard"""
     users = []
@@ -48,6 +299,64 @@ def generate_live_users():
     
     return users
 
+
+def get_project_data_for_dashboard():
+    """Get project data formatted for dashboard display"""
+    if not execution_results:
+        return None
+    
+    # Aggregate data from all projects
+    total_files = 0
+    total_size = 0
+    languages = {}
+    file_types = {}
+    all_files = []
+    
+    for project_id, project in execution_results.items():
+        if not os.path.exists(project['folder_path']):
+            continue
+            
+        analysis = project.get('analysis', {})
+        total_files += analysis.get('total_files', 0)
+        total_size += analysis.get('total_size', 0)
+        
+        # Aggregate languages
+        for lang, count in analysis.get('languages', {}).items():
+            languages[lang] = languages.get(lang, 0) + count
+        
+        # Aggregate file types
+        for ft, count in analysis.get('file_types', {}).items():
+            file_types[ft] = file_types.get(ft, 0) + count
+        
+        # Collect all files
+        for root, dirs, files in os.walk(project['folder_path']):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for f in files:
+                if not f.startswith('.'):
+                    rel_path = os.path.relpath(os.path.join(root, f), project['folder_path'])
+                    all_files.append({
+                        'id': len(all_files) + 1,
+                        'name': f,
+                        'path': rel_path,
+                        'project': project['name'],
+                        'size': format_size(os.path.getsize(os.path.join(root, f))),
+                        'type': f.rsplit('.', 1)[-1].lower() if '.' in f else 'unknown'
+                    })
+    
+    if total_files == 0:
+        return None
+    
+    return {
+        'total_files': total_files,
+        'total_size': format_size(total_size),
+        'total_size_bytes': total_size,
+        'languages': languages,
+        'file_types': file_types,
+        'files': all_files[:50],  # Limit to 50 files for display
+        'total_projects': len(execution_results)
+    }
+
+
 def generate_metrics():
     """Generate real-time metrics"""
     return {
@@ -61,6 +370,7 @@ def generate_metrics():
         'timestamp': datetime.now().isoformat()
     }
 
+
 def generate_intention_distribution():
     """Generate intention class distribution"""
     total = 1000
@@ -70,6 +380,7 @@ def generate_intention_distribution():
         'Learner': random.randint(200, 400),
         'Abandoner': random.randint(50, 150)
     }
+
 
 def generate_feature_importance():
     """Generate feature importance data"""
@@ -84,14 +395,257 @@ def generate_feature_importance():
     return {k: round(v/total, 4) for k, v in importance.items()}
 
 
+# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
+@app.route('/upload')
+def upload_page():
+    """Dedicated upload page"""
+    return render_template('index.html', page='upload')
+
+
+@app.route('/projects')
+def projects_page():
+    """Projects management page"""
+    return render_template('index.html', page='projects')
+
+
+@app.route('/execute')
+def execute_page():
+    """Code execution page"""
+    return render_template('index.html', page='execute')
+
+
+@app.route('/api/upload', methods=['POST'])
+def upload_folder():
+    """Handle folder/file upload"""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'No file selected'}), 400
+        
+        # Generate unique folder ID
+        folder_id = str(uuid.uuid4())
+        project_folder = os.path.join(app.config['UPLOAD_FOLDER'], folder_id)
+        os.makedirs(project_folder, exist_ok=True)
+        
+        # Handle ZIP files (folder uploads)
+        if file.filename.endswith('.zip'):
+            try:
+                with zipfile.ZipFile(file, 'r') as zip_ref:
+                    zip_ref.extractall(project_folder)
+                project_name = os.path.splitext(file.filename)[0]
+            except zipfile.BadZipFile:
+                return jsonify({'success': False, 'error': 'Invalid ZIP file'}), 400
+        else:
+            # Single file upload
+            filename = file.filename
+            file.save(os.path.join(project_folder, filename))
+            project_name = os.path.splitext(filename)[0]
+        
+        # Get project structure
+        structure = scan_project_structure(project_folder)
+        analysis = analyze_project(project_folder)
+        
+        # Store project info
+        project_info = {
+            'id': folder_id,
+            'name': project_name,
+            'folder_path': project_folder,
+            'structure': structure,
+            'analysis': analysis,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        execution_results[folder_id] = project_info
+        
+        return jsonify({
+            'success': True,
+            'project': {
+                'id': folder_id,
+                'name': project_name,
+                'structure': structure,
+                'analysis': analysis
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Upload error: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/projects', methods=['GET'])
+def list_projects():
+    """List all uploaded projects"""
+    projects = []
+    
+    try:
+        for folder_id, project_info in execution_results.items():
+            if os.path.exists(project_info['folder_path']):
+                projects.append({
+                    'id': folder_id,
+                    'name': project_info['name'],
+                    'created_at': project_info['created_at'],
+                    'analysis': project_info['analysis']
+                })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
+    return jsonify({'success': True, 'projects': projects})
+
+
+@app.route('/api/projects/<project_id>', methods=['GET'])
+def get_project(project_id):
+    """Get project details"""
+    if project_id not in execution_results:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+    
+    project = execution_results[project_id]
+    
+    # Refresh analysis
+    if os.path.exists(project['folder_path']):
+        project['analysis'] = analyze_project(project['folder_path'])
+        project['structure'] = scan_project_structure(project['folder_path'])
+    
+    return jsonify({
+        'success': True,
+        'project': {
+            'id': project_id,
+            'name': project['name'],
+            'structure': project['structure'],
+            'analysis': project['analysis'],
+            'created_at': project['created_at']
+        }
+    })
+
+
+@app.route('/api/projects/<project_id>/file', methods=['GET'])
+def get_file_content(project_id):
+    """Get content of a specific file"""
+    if project_id not in execution_results:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+    
+    file_path = request.args.get('path')
+    if not file_path:
+        return jsonify({'success': False, 'error': 'No file path provided'}), 400
+    
+    full_path = os.path.join(execution_results[project_id]['folder_path'], file_path)
+    
+    if not os.path.exists(full_path):
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+    
+    content = read_file_content(full_path)
+    
+    return jsonify({
+        'success': True,
+        'content': content,
+        'file_name': os.path.basename(file_path),
+        'file_path': file_path
+    })
+
+
+@app.route('/api/projects/<project_id>/execute', methods=['POST'])
+def execute_project(project_id):
+    """Execute code in a project"""
+    if project_id not in execution_results:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+    
+    data = request.get_json()
+    file_path = data.get('file_path', '')
+    
+    if not file_path:
+        return jsonify({'success': False, 'error': 'No file path provided'}), 400
+    
+    project = execution_results[project_id]
+    full_path = os.path.join(project['folder_path'], file_path)
+    
+    if not os.path.exists(full_path):
+        return jsonify({'success': False, 'error': 'File not found'}), 404
+    
+    ext = file_path.rsplit('.', 1)[-1].lower() if '.' in file_path else ''
+    
+    # Execute based on file type
+    if ext == 'py':
+        result = execute_python_file(full_path, project['folder_path'])
+    elif ext == 'js':
+        result = execute_javascript_file(full_path, project['folder_path'])
+    else:
+        return jsonify({
+            'success': False,
+            'error': f'Execution not supported for .{ext} files'
+        }), 400
+    
+    return jsonify({
+        'success': True,
+        'execution': {
+            'file': file_path,
+            'result': result
+        }
+    })
+
+
+@app.route('/api/projects/<project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """Delete a project"""
+    if project_id not in execution_results:
+        return jsonify({'success': False, 'error': 'Project not found'}), 404
+    
+    project = execution_results[project_id]
+    
+    try:
+        if os.path.exists(project['folder_path']):
+            shutil.rmtree(project['folder_path'])
+        
+        del execution_results[project_id]
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# Analytics API routes (existing)
 @app.route('/api/data')
 def api_data():
-    """Combined API for dashboard data"""
+    """Combined API for dashboard data - returns project data if available, demo data otherwise"""
+    # Check if there are uploaded projects
+    project_data = get_project_data_for_dashboard()
+    
+    if project_data:
+        # Return project data
+        return jsonify({
+            'mode': 'project',
+            'metrics': {
+                'total_files': project_data['total_files'],
+                'total_projects': project_data['total_projects'],
+                'total_size': project_data['total_size'],
+                'active_files': project_data['total_files'],
+                'languages': len(project_data['languages']),
+                'file_types': len(project_data['file_types']),
+                'timestamp': datetime.now().isoformat()
+            },
+            'files': project_data['files'],
+            'languages': project_data['languages'],
+            'file_types': project_data['file_types'],
+            'project_stats': {
+                'labels': list(project_data['languages'].keys()),
+                'values': list(project_data['languages'].values())
+            },
+            'file_type_stats': {
+                'labels': list(project_data['file_types'].keys()),
+                'values': list(project_data['file_types'].values())
+            }
+        })
+    
+    # Return demo data if no projects
     return jsonify({
+        'mode': 'demo',
         'metrics': generate_metrics(),
         'users': generate_live_users(),
         'intention_dist': generate_intention_distribution(),
@@ -110,6 +664,31 @@ def api_data():
         }
     })
 
+
+@app.route('/api/demo')
+def api_demo():
+    """Force demo data regardless of uploaded projects"""
+    return jsonify({
+        'mode': 'demo',
+        'metrics': generate_metrics(),
+        'users': generate_live_users(),
+        'intention_dist': generate_intention_distribution(),
+        'feature_importance': generate_feature_importance(),
+        'segment_data': {
+            'Premium': random.randint(280, 380),
+            'Regular': random.randint(1100, 1400),
+            'New': random.randint(500, 700),
+            'At-Risk': random.randint(100, 200)
+        },
+        'activity_data': {
+            'labels': ['6am', '8am', '10am', '12pm', '2pm', '4pm', '6pm', '8pm', '10pm'],
+            'values': [random.randint(100, 200), random.randint(200, 350), random.randint(300, 450), 
+                      random.randint(450, 600), random.randint(400, 550), random.randint(350, 500),
+                      random.randint(300, 450), random.randint(200, 350), random.randint(100, 250)]
+        }
+    })
+
+
 @app.route('/api/init')
 def api_init():
     """Initial data for chart initialization"""
@@ -127,6 +706,7 @@ def api_init():
             'At-Risk': 150
         }
     })
+
 
 @app.route('/api/metrics')
 def api_metrics():
@@ -150,6 +730,7 @@ def api_metrics():
         }
     })
 
+
 # Health check endpoint for Render
 @app.route('/health')
 def health_check():
@@ -160,19 +741,27 @@ def health_check():
         'timestamp': datetime.now().isoformat()
     }), 200
 
+
 @app.route('/api/status')
 def api_status():
     """API status endpoint"""
     return jsonify({
         'status': 'running',
         'version': '1.0.0',
-        'endpoints': ['/api/metrics', '/api/init', '/api/data', '/health']
+        'endpoints': ['/api/metrics', '/api/init', '/api/data', '/health', '/api/upload', '/api/projects']
     })
+
 
 if __name__ == '__main__':
     print("=" * 60)
+    print("IntentScope - AI Analytics with Project Upload")
     print("=" * 60)
     print("Open your browser to: http://127.0.0.1:5000")
+    print("Features:")
+    print("  - Dashboard: Real-time analytics")
+    print("  - Upload: Upload project folders (ZIP or files)")
+    print("  - Projects: Browse and manage uploaded projects")
+    print("  - Execute: Run Python and JavaScript files")
     print("=" * 60)
     
     port = int(os.environ.get('PORT', 5000))
