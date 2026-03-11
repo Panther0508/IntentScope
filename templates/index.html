@@ -231,6 +231,10 @@
                     <p class="lead" id="dashboardSubtitle">View and analyze your uploaded projects</p>
                 </div>
                 <div class="col-lg-4 text-lg-end">
+                    <span class="badge bg-success me-2" id="liveIndicator" style="display: none;">
+                        <i class="fas fa-circle me-1"
+                            style="font-size: 0.5rem; animation: pulse 1.5s infinite;"></i>LIVE
+                    </span>
                     <button class="btn btn-warning btn-lg me-2" id="demoBtn" onclick="loadDemoData()"
                         style="display: none;">
                         <i class="fas fa-play me-2"></i>Demo
@@ -580,6 +584,7 @@
             document.getElementById('projectCharts').style.display = 'block';
             document.getElementById('demoCharts').style.display = 'none';
             document.getElementById('demoBtn').style.display = 'none';
+            document.getElementById('liveIndicator').style.display = 'inline-block';
 
             // Update dashboard title
             document.getElementById('dashboardTitle').textContent = 'Project Analytics';
@@ -612,6 +617,7 @@
             document.getElementById('projectCharts').style.display = 'none';
             document.getElementById('demoCharts').style.display = 'block';
             document.getElementById('demoBtn').style.display = 'none';
+            document.getElementById('liveIndicator').style.display = 'none';
 
             // Update dashboard title
             document.getElementById('dashboardTitle').textContent = 'Demo: AI Analytics';

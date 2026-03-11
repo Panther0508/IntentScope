@@ -323,6 +323,10 @@ body {
     }
 }
 
+.live-indicator {
+    animation: pulse 1.5s infinite;
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 8px;
