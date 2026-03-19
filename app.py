@@ -120,7 +120,9 @@ def analyze_project(folder_path):
         'total_size': 0,
         'file_types': {},
         'languages': {},
-        'main_files': []
+        'main_files': [],
+        'user_datasets': [],
+        'csv_analysis': {}
     }
     
     # Language detection mapping
@@ -153,6 +155,8 @@ def analyze_project(folder_path):
         'ts': 'TypeScript'
     }
     
+    csv_files = []
+    
     for root, dirs, files in os.walk(folder_path):
         # Skip hidden and temp directories
         dirs[:] = [d for d in dirs if not d.startswith('.') and d not in ['__pycache__', 'node_modules', 'venv']]
@@ -176,6 +180,10 @@ def analyze_project(folder_path):
                     analysis['file_types'][ext] = analysis['file_types'].get(ext, 0) + 1
                     lang = language_map.get(ext, ext.upper())
                     analysis['languages'][lang] = analysis['languages'].get(lang, 0) + 1
+                    
+                    # Track CSV files for analysis
+                    if ext == 'csv':
+                        csv_files.append((file, file_path))
                 
                 # Identify main files
                 main_file_patterns = ['main', 'index', 'app', 'server', 'setup', 'run']
@@ -187,8 +195,217 @@ def analyze_project(folder_path):
                         'size': format_size(size)
                     })
     
+    # Analyze CSV files for user data
+    if csv_files:
+        analysis['csv_analysis'] = analyze_csv_datasets(csv_files)
+        analysis['user_datasets'] = [f[0] for f in csv_files]
+    
     analysis['total_size_formatted'] = format_size(analysis['total_size'])
     return analysis
+
+
+def analyze_csv_datasets(csv_files):
+    """Analyze CSV files to extract user data insights"""
+    results = {
+        'total_datasets': len(csv_files),
+        'datasets': [],
+        'user_columns_found': False,
+        'column_stats': {},
+        'summary': {}
+    }
+    
+    # Common user-related column names
+    user_column_patterns = [
+        'user', 'customer', 'client', 'member', 'account', 'id',
+        'name', 'email', 'age', 'gender', 'country', 'city', 'region',
+        'signup', 'registered', 'created', 'last_login', 'active', 'status',
+        'purchase', 'order', 'transaction', 'spent', 'amount', 'revenue',
+        'subscription', 'plan', 'tier', 'churn', '流失', '用户'
+    ]
+    
+    total_rows = 0
+    
+    for filename, filepath in csv_files:
+        try:
+            # Try different encodings
+            df = None
+            for encoding in ['utf-8', 'latin1', 'iso-8859-1', 'cp1252']:
+                try:
+                    df = pd.read_csv(filepath, encoding=encoding, nrows=1000)
+                    break
+                except:
+                    continue
+            
+            if df is None or df.empty:
+                continue
+            
+            # Get column info
+            columns = list(df.columns)
+            num_rows = len(df)
+            total_rows += num_rows
+            
+            # Detect user-related columns
+            user_cols = []
+            numeric_cols = []
+            categorical_cols = []
+            
+            for col in columns:
+                col_lower = col.lower()
+                
+                # Check if it's a user-related column
+                if any(pattern in col_lower for pattern in user_column_patterns):
+                    user_cols.append(col)
+                    results['user_columns_found'] = True
+                
+                # Check if numeric
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    numeric_cols.append(col)
+                # Check if categorical (object or few unique values)
+                elif df[col].dtype == 'object' or df[col].nunique() < 50:
+                    categorical_cols.append(col)
+            
+            # Generate basic stats
+            dataset_info = {
+                'name': filename,
+                'rows': num_rows,
+                'columns': len(columns),
+                'user_columns': user_cols,
+                'numeric_columns': numeric_cols[:10],  # Limit
+                'categorical_columns': categorical_cols[:10],
+                'preview': {}
+            }
+            
+            # Add preview data
+            for col in columns[:5]:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    dataset_info['preview'][col] = {
+                        'type': 'numeric',
+                        'min': float(df[col].min()) if not pd.isna(df[col].min()) else 0,
+                        'max': float(df[col].max()) if not pd.isna(df[col].max()) else 0,
+                        'mean': float(df[col].mean()) if not pd.isna(df[col].mean()) else 0
+                    }
+                else:
+                    top_values = df[col].value_counts().head(5).to_dict()
+                    dataset_info['preview'][col] = {
+                        'type': 'categorical',
+                        'unique': int(df[col].nunique()),
+                        'top_values': {str(k): int(v) for k, v in top_values.items()}
+                    }
+            
+            results['datasets'].append(dataset_info)
+            
+        except Exception as e:
+            logger.error(f"Error analyzing CSV {filename}: {str(e)}")
+            continue
+    
+    results['summary'] = {
+        'total_rows': total_rows,
+        'total_files': len(csv_files)
+    }
+    
+    return results
+
+
+def get_user_data_for_dashboard():
+    """Get user data analytics for dashboard display"""
+    if not execution_results:
+        return None
+    
+    all_csv_analysis = {}
+    total_files = 0
+    total_size = 0
+    languages = {}
+    file_types = {}
+    all_files = []
+    user_datasets = []
+    
+    for project_id, project in execution_results.items():
+        if not os.path.exists(project['folder_path']):
+            continue
+            
+        analysis = project.get('analysis', {})
+        total_files += analysis.get('total_files', 0)
+        total_size += analysis.get('total_size', 0)
+        
+        # Aggregate languages
+        for lang, count in analysis.get('languages', {}).items():
+            languages[lang] = languages.get(lang, 0) + count
+        
+        # Aggregate file types
+        for ft, count in analysis.get('file_types', {}).items():
+            file_types[ft] = file_types.get(ft, 0) + count
+        
+        # Collect CSV analysis
+        csv_analysis = analysis.get('csv_analysis', {})
+        if csv_analysis:
+            all_csv_analysis[project['name']] = csv_analysis
+            user_datasets.extend(analysis.get('user_datasets', []))
+        
+        # Collect all files
+        for root, dirs, files in os.walk(project['folder_path']):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            for f in files:
+                if not f.startswith('.'):
+                    rel_path = os.path.relpath(os.path.join(root, f), project['folder_path'])
+                    all_files.append({
+                        'id': len(all_files) + 1,
+                        'name': f,
+                        'path': rel_path,
+                        'project': project['name'],
+                        'size': format_size(os.path.getsize(os.path.join(root, f))),
+                        'type': f.rsplit('.', 1)[-1].lower() if '.' in f else 'unknown'
+                    })
+    
+    if total_files == 0:
+        return None
+    
+    # Aggregate CSV data
+    aggregated_csv = aggregate_csv_data(all_csv_analysis)
+    
+    return {
+        'total_files': total_files,
+        'total_size': format_size(total_size),
+        'total_size_bytes': total_size,
+        'languages': languages,
+        'file_types': file_types,
+        'files': all_files[:50],
+        'total_projects': len(execution_results),
+        'user_datasets': user_datasets,
+        'csv_analysis': all_csv_analysis,
+        'aggregated_csv': aggregated_csv
+    }
+
+
+def aggregate_csv_data(csv_analysis_dict):
+    """Aggregate data from multiple CSV files"""
+    if not csv_analysis_dict:
+        return {}
+    
+    total_rows = 0
+    all_user_cols = {}
+    all_numeric_cols = {}
+    all_categorical_cols = {}
+    
+    for project_name, analysis in csv_analysis_dict.items():
+        for dataset in analysis.get('datasets', []):
+            total_rows += dataset.get('rows', 0)
+            
+            # Collect column stats
+            for col in dataset.get('user_columns', []):
+                all_user_cols[col] = all_user_cols.get(col, 0) + 1
+            
+            for col in dataset.get('numeric_columns', []):
+                all_numeric_cols[col] = col
+            
+            for col in dataset.get('categorical_columns', []):
+                all_categorical_cols[col] = col
+    
+    return {
+        'total_rows': total_rows,
+        'user_columns': list(all_user_cols.keys()),
+        'numeric_columns': list(all_numeric_cols.keys())[:20],
+        'categorical_columns': list(all_categorical_cols.keys())[:20]
+    }
 
 
 def execute_python_file(file_path, project_folder):
@@ -311,6 +528,8 @@ def get_project_data_for_dashboard():
     languages = {}
     file_types = {}
     all_files = []
+    user_datasets = []
+    csv_analysis = {}
     
     for project_id, project in execution_results.items():
         if not os.path.exists(project['folder_path']):
@@ -327,6 +546,11 @@ def get_project_data_for_dashboard():
         # Aggregate file types
         for ft, count in analysis.get('file_types', {}).items():
             file_types[ft] = file_types.get(ft, 0) + count
+        
+        # Collect CSV analysis
+        if analysis.get('csv_analysis'):
+            csv_analysis[project['name']] = analysis['csv_analysis']
+            user_datasets.extend(analysis.get('user_datasets', []))
         
         # Collect all files
         for root, dirs, files in os.walk(project['folder_path']):
@@ -346,6 +570,9 @@ def get_project_data_for_dashboard():
     if total_files == 0:
         return None
     
+    # Aggregate CSV data
+    aggregated_csv = aggregate_csv_data(csv_analysis)
+    
     return {
         'total_files': total_files,
         'total_size': format_size(total_size),
@@ -353,7 +580,10 @@ def get_project_data_for_dashboard():
         'languages': languages,
         'file_types': file_types,
         'files': all_files[:50],  # Limit to 50 files for display
-        'total_projects': len(execution_results)
+        'total_projects': len(execution_results),
+        'user_datasets': user_datasets,
+        'csv_analysis': csv_analysis,
+        'aggregated_csv': aggregated_csv
     }
 
 
@@ -618,7 +848,7 @@ def api_data():
     project_data = get_project_data_for_dashboard()
     
     if project_data:
-        # Return project data
+        # Return project data with CSV analysis
         return jsonify({
             'mode': 'project',
             'metrics': {
@@ -628,6 +858,8 @@ def api_data():
                 'active_files': project_data['total_files'],
                 'languages': len(project_data['languages']),
                 'file_types': len(project_data['file_types']),
+                'total_rows': project_data.get('aggregated_csv', {}).get('total_rows', 0),
+                'user_datasets': len(project_data.get('user_datasets', [])),
                 'timestamp': datetime.now().isoformat()
             },
             'files': project_data['files'],
@@ -640,6 +872,13 @@ def api_data():
             'file_type_stats': {
                 'labels': list(project_data['file_types'].keys()),
                 'values': list(project_data['file_types'].values())
+            },
+            # User data analysis
+            'user_analysis': {
+                'datasets': project_data.get('user_datasets', []),
+                'csv_analysis': project_data.get('csv_analysis', {}),
+                'aggregated': project_data.get('aggregated_csv', {}),
+                'has_user_data': len(project_data.get('user_datasets', [])) > 0
             }
         })
     

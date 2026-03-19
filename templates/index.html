@@ -251,28 +251,40 @@
     <section class="py-4">
         <div class="container">
             <div class="row" id="projectMetrics" style="display: none;">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card text-center">
                         <div class="metric-value" id="totalFiles">-</div>
                         <div class="metric-label">Total Files</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card text-center">
                         <div class="metric-value" id="totalProjects">-</div>
                         <div class="metric-label">Projects</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card text-center">
                         <div class="metric-value" id="totalSize">-</div>
                         <div class="metric-label">Total Size</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="metric-card text-center">
                         <div class="metric-value" id="totalLanguages">-</div>
                         <div class="metric-label">Languages</div>
+                    </div>
+                </div>
+                <div class="col-md-2" id="userDatasetsCard" style="display: none;">
+                    <div class="metric-card text-center">
+                        <div class="metric-value" id="totalUserDatasets">-</div>
+                        <div class="metric-label">User Datasets</div>
+                    </div>
+                </div>
+                <div class="col-md-2" id="totalRowsCard" style="display: none;">
+                    <div class="metric-card text-center">
+                        <div class="metric-value" id="totalRows">-</div>
+                        <div class="metric-label">Total Rows</div>
                     </div>
                 </div>
             </div>
@@ -597,6 +609,18 @@
             document.getElementById('totalSize').textContent = metrics.total_size;
             document.getElementById('totalLanguages').textContent = metrics.languages;
 
+            // Show user data metrics if available
+            const userAnalysis = data.user_analysis;
+            if (userAnalysis && userAnalysis.has_user_data) {
+                document.getElementById('userDatasetsCard').style.display = 'block';
+                document.getElementById('totalRowsCard').style.display = 'block';
+                document.getElementById('totalUserDatasets').textContent = userAnalysis.datasets.length;
+                document.getElementById('totalRows').textContent = metrics.total_rows.toLocaleString();
+            } else {
+                document.getElementById('userDatasetsCard').style.display = 'none';
+                document.getElementById('totalRowsCard').style.display = 'none';
+            }
+
             // Update table
             document.getElementById('tableTitle').innerHTML = '<i class="fas fa-file-code me-2"></i>Project Files';
             document.getElementById('tableHeader').innerHTML = `
@@ -618,6 +642,8 @@
             document.getElementById('demoCharts').style.display = 'block';
             document.getElementById('demoBtn').style.display = 'none';
             document.getElementById('liveIndicator').style.display = 'none';
+            document.getElementById('userDatasetsCard').style.display = 'none';
+            document.getElementById('totalRowsCard').style.display = 'none';
 
             // Update dashboard title
             document.getElementById('dashboardTitle').textContent = 'Demo: AI Analytics';
