@@ -44,7 +44,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Allowed extensions for upload
 ALLOWED_EXTENSIONS = {
     'txt', 'py', 'js', 'html', 'css', 'json', 'xml', 'md', 'yaml', 'yml',
-    'csv', 'txt', 'log', 'sh', 'bat', 'ps1', 'sql', 'r', 'java', 'c', 'cpp',
+    'csv', 'log', 'sh', 'bat', 'ps1', 'sql', 'r', 'java', 'c', 'cpp',
     'h', 'hpp', 'cs', 'go', 'rs', 'rb', 'php', 'swift', 'kt', 'scala', 'ts'
 }
 
@@ -636,19 +636,19 @@ def index():
 @app.route('/upload')
 def upload_page():
     """Dedicated upload page"""
-    return render_template('index.html', page='upload')
+    return render_template('index.html', initial_page='upload')
 
 
 @app.route('/projects')
 def projects_page():
     """Projects management page"""
-    return render_template('index.html', page='projects')
+    return render_template('index.html', initial_page='projects')
 
 
 @app.route('/execute')
 def execute_page():
     """Code execution page"""
-    return render_template('index.html', page='execute')
+    return render_template('index.html', initial_page='execute')
 
 
 @app.route('/api/upload', methods=['POST'])
@@ -1508,13 +1508,13 @@ def ai_qa():
 @app.route('/ai-tools')
 def ai_tools_page():
     """AI Tools page showing available AI features"""
-    return render_template('index.html', page='ai-tools')
+    return render_template('index.html', initial_page='ai-tools')
 
 
 @app.route('/admin')
 def admin_page():
     """Admin dashboard page"""
-    return render_template('index.html', page='admin')
+    return render_template('index.html', initial_page='admin')
 
 
 if __name__ == '__main__':

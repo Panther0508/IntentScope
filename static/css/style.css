@@ -499,6 +499,46 @@ body {
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
 }
 
+/* AI Tool Cards */
+.ai-tool-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    padding: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.ai-tool-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--primary-color);
+    transform: translateY(-3px);
+}
+
+.ai-tool-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.ai-tool-header i {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+    margin-right: 10px;
+}
+
+.ai-tool-header h4 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.ai-result {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
 .nav-pills .nav-link:hover:not(.active) {
     background: rgba(255, 255, 255, 0.1);
 }

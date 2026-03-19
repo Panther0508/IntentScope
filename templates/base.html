@@ -24,42 +24,42 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="#" onclick="switchTab('dashboard'); return false;">
+                        <a class="nav-link" href="/?page=dashboard" data-tab="dashboard">
                             <i class="fas fa-chart-line me-1"></i>Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTab('upload'); return false;">
+                        <a class="nav-link" href="/upload" data-tab="upload">
                             <i class="fas fa-cloud-upload-alt me-1"></i>Upload
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTab('projects'); return false;">
+                        <a class="nav-link" href="/projects" data-tab="projects">
                             <i class="fas fa-folder-open me-1"></i>Projects
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTab('execute'); return false;">
+                        <a class="nav-link" href="/execute" data-tab="execute">
                             <i class="fas fa-play-circle me-1"></i>Execute
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTabAndScroll('dashboard', 'analytics'); return false;">
+                        <a class="nav-link" href="/?page=dashboard#analytics" data-tab="analytics">
                             <i class="fas fa-chart-bar me-1"></i>Analytics
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTabAndScroll('dashboard', 'predictions'); return false;">
+                        <a class="nav-link" href="/?page=dashboard#predictions" data-tab="predictions">
                             <i class="fas fa-crystal-ball me-1"></i>Predictions
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTab('ai-tools'); return false;">
+                        <a class="nav-link" href="/ai-tools" data-tab="ai-tools">
                             <i class="fas fa-robot me-1"></i>AI Tools
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="switchTab('admin'); return false;">
+                        <a class="nav-link" href="/admin" data-tab="admin">
                             <i class="fas fa-user-shield me-1"></i>Admin
                         </a>
                     </li>
@@ -84,12 +84,10 @@
                 <div class="col-md-4">
                     <h5>Features</h5>
                     <ul class="list-unstyled">
-                        <li><a href="#" onclick="switchTab('upload'); return false;"><i
-                                    class="fas fa-cloud-upload-alt me-2"></i>Upload Projects</a></li>
-                        <li><a href="#" onclick="switchTab('execute'); return false;"><i
-                                    class="fas fa-play me-2"></i>Execute Code</a></li>
-                        <li><a href="#" onclick="switchTabAndScroll('dashboard', 'analytics'); return false;"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
-                        <li><a href="#" onclick="switchTabAndScroll('dashboard', 'predictions'); return false;"><i class="fas fa-crystal-ball me-2"></i>Predictions</a></li>
+                        <li><a href="/upload"><i class="fas fa-cloud-upload-alt me-2"></i>Upload Projects</a></li>
+                        <li><a href="/execute"><i class="fas fa-play me-2"></i>Execute Code</a></li>
+                        <li><a href="/?page=dashboard#analytics"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
+                        <li><a href="/?page=dashboard#predictions"><i class="fas fa-crystal-ball me-2"></i>Predictions</a></li>
                     </ul>
                 </div>
                 <div class="col-md-4">
@@ -118,21 +116,48 @@
             if (initialPage) {
                 switchTab(initialPage);
             }
+            
+            // Update navbar active state based on current URL
+            updateNavbarFromURL();
         });
 
-        function switchTab(tabId) {
-            // Update nav links
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-
-            // Find and activate the correct nav link
-            const tabLinks = document.querySelectorAll('.nav-link');
-            tabLinks.forEach(link => {
-                if (link.getAttribute('data-bs-target') === '#' + tabId ||
-                    link.getAttribute('onclick')?.includes(tabId)) {
+        // Update navbar active state based on current URL
+        function updateNavbarFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentPage = urlParams.get('page') || 'dashboard';
+            
+            // Update navbar links
+            document.querySelectorAll('.navbar .nav-link').forEach(link => {
+                const tab = link.getAttribute('data-tab');
+                if (tab === currentPage) {
                     link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
                 }
+            });
+        }
+
+        // Tab-specific initialization handlers (to be defined in index.html)
+        function initDashboardTab() {
+            if (typeof refreshData === 'function') refreshData();
+        }
+        function initProjectsTab() {
+            if (typeof loadProjects === 'function') loadProjects();
+        }
+        function initExecuteTab() {
+            if (typeof loadProjectSelect === 'function') loadProjectSelect();
+        }
+        function initAIToolsTab() {
+            if (typeof checkAIStatus === 'function') checkAIStatus();
+        }
+        function initAdminTab() {
+            if (typeof loadAdminPredictions === 'function') loadAdminPredictions();
+        }
+
+        function switchTab(tabId) {
+            // Update Bootstrap pill tab links only
+            document.querySelectorAll('#mainTabs .nav-link, #adminTabs .nav-link').forEach(link => {
+                link.classList.remove('active');
             });
 
             // Update tab content visibility
@@ -156,6 +181,25 @@
             const url = new URL(window.location);
             url.searchParams.set('page', tabId);
             window.history.pushState({}, '', url);
+
+            // Update navbar active state
+            document.querySelectorAll('.navbar .nav-link').forEach(link => {
+                const tab = link.getAttribute('data-tab');
+                if (tab === tabId) {
+                    link.classList.add('active');
+                } else {
+                    link.classList.remove('active');
+                }
+            });
+
+            // Call tab-specific initialization
+            switch(tabId) {
+                case 'dashboard': initDashboardTab(); break;
+                case 'projects': initProjectsTab(); break;
+                case 'execute': initExecuteTab(); break;
+                case 'ai-tools': initAIToolsTab(); break;
+                case 'admin': initAdminTab(); break;
+            }
 
             // Smooth scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });

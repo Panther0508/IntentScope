@@ -1203,24 +1203,8 @@
     // AI Tools State
     let aiModelsLoaded = false;
 
-    // Tab switching
-    function switchTab(tabId) {
-        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
-        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-
-        document.getElementById(tabId).classList.add('active');
-        document.querySelector(`[data-bs-target="#${tabId}"]`).classList.add('active');
-
-        if (tabId === 'dashboard') {
-            refreshData();
-        } else if (tabId === 'projects') {
-            loadProjects();
-        } else if (tabId === 'execute') {
-            loadProjectSelect();
-        } else if (tabId === 'ai-tools') {
-            checkAIStatus();
-        }
-    }
+    // Tab initialization - handled by base.html switchTab function
+    // This ensures consistent tab switching across the application
     
     // ===== AI Tools Functions =====
     
@@ -1416,13 +1400,8 @@
         showAILoading(false);
     }
 
-    // Initialize tabs
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('shown.bs.tab', (e) => {
-            const target = e.target.getAttribute('data-bs-target').replace('#', '');
-            switchTab(target);
-        });
-    });
+    // Tab initialization is handled by base.html
+    // This ensures consistent behavior across all tabs
 
     // Load demo data
     function loadDemoData() {
