@@ -27,8 +27,8 @@ pyyaml>=6.0
 requests>=2.32.0
 
 # Hugging Face AI Model Integration
+# Note: torch is installed separately via build command with PyTorch index URL
 transformers>=4.40.0
-torch>=2.0.0
 sentencepiece>=0.1.99
 tokenizers>=0.15.0
 safetensors>=0.4.0
