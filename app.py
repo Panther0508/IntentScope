@@ -628,7 +628,9 @@ def generate_feature_importance():
 # Routes
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Check for page parameter to switch to specific tab on load
+    page = request.args.get('page', 'dashboard')
+    return render_template('index.html', initial_page=page)
 
 
 @app.route('/upload')
@@ -991,6 +993,530 @@ def api_status():
     })
 
 
+# ===== Admin Feedback System API Endpoints =====
+
+@app.route('/api/admin/predictions')
+def api_admin_predictions():
+    """
+    Get comprehensive prediction data with confidence scores and actionable insights.
+    This endpoint provides administrators with a clear view of user intent predictions.
+    """
+    # Generate prediction data with confidence scores
+    predictions = []
+    user_types = ['Builder', 'Explorer', 'Learner', 'Abandoner']
+    
+    # Actionable insights mapping
+    insights_map = {
+        'Builder': [
+            'User is actively creating projects - Consider offering advanced templates',
+            'High engagement indicates satisfaction - Recommend premium features',
+            'User shows consistent activity patterns - Ideal for referral programs'
+        ],
+        'Explorer': [
+            'User is browsing without committing - Show targeted recommendations',
+            'Consider personalized onboarding to guide next steps',
+            'User may need help discovering relevant features'
+        ],
+        'Learner': [
+            'User is investing time in understanding platform - Offer tutorials',
+            'Consider providing educational resources and guided tours',
+            'User may benefit from interactive learning experiences'
+        ],
+        'Abandoner': [
+            'User shows signs of disengagement - Send re-engagement campaigns',
+            'Consider offering incentives or support to prevent churn',
+            'High risk of leaving - Priority for customer retention efforts'
+        ]
+    }
+    
+    # Recommended responses mapping
+    responses_map = {
+        'Builder': [
+            'Send: "Explore our advanced features for power users"',
+            'Notify about new template releases',
+            'Invite to beta testing program'
+        ],
+        'Explorer': [
+            'Send: "Getting started guide"',
+            'Highlight popular features in this category',
+            'Offer personalized demo'
+        ],
+        'Learner': [
+            'Send: "Platform tutorial series"',
+            'Offer live chat support',
+            'Provide documentation links'
+        ],
+        'Abandoner': [
+            'Send: "We miss you! 20% off your next month"',
+            'Request feedback survey',
+            'Offer extended trial period'
+        ]
+    }
+    
+    for i in range(30):
+        user_type = random.choice(user_types)
+        confidence = round(random.uniform(0.65, 0.98), 3)
+        
+        predictions.append({
+            'id': f'PRED-{i+1:05d}',
+            'user_id': f'USER-{i+1:03d}',
+            'timestamp': (datetime.now() - timedelta(minutes=random.randint(1, 1440))).isoformat(),
+            'predicted_intent': user_type,
+            'confidence_score': confidence,
+            'confidence_level': 'High' if confidence >= 0.85 else 'Medium' if confidence >= 0.70 else 'Low',
+            'alternative_intents': [t for t in user_types if t != user_type][:2],
+            'alternative_confidences': [round(random.uniform(0.1, 0.3), 3) for _ in range(2)],
+            'actionable_insights': random.sample(insights_map[user_type], 2),
+            'recommended_response': random.choice(responses_map[user_type]),
+            'behavioral_indicators': [
+                f'Action count: {random.randint(10, 200)}',
+                f'Session duration: {random.randint(5, 120)} min',
+                f'Feature usage: {random.choice(["Basic", "Intermediate", "Advanced"])}',
+                f'Login frequency: {random.choice(["Daily", "Weekly", "Monthly"])}'
+            ],
+            'verified': random.choice([True, False]),
+            'feedback': None
+        })
+    
+    # Sort by confidence (highest first)
+    predictions.sort(key=lambda x: x['confidence_score'], reverse=True)
+    
+    return jsonify({
+        'predictions': predictions,
+        'summary': {
+            'total_predictions': len(predictions),
+            'high_confidence_count': len([p for p in predictions if p['confidence_level'] == 'High']),
+            'medium_confidence_count': len([p for p in predictions if p['confidence_level'] == 'Medium']),
+            'low_confidence_count': len([p for p in predictions if p['confidence_level'] == 'Low']),
+            'verified_count': len([p for p in predictions if p['verified']]),
+            'pending_verification': len([p for p in predictions if not p['verified']])
+        },
+        'intent_distribution': generate_intention_distribution(),
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/admin/predictions/<prediction_id>', methods=['POST'])
+def api_admin_verify_prediction(prediction_id):
+    """
+    Allow admin to verify or correct a prediction.
+    Provides feedback mechanism for improving the model.
+    """
+    data = request.get_json()
+    
+    # In a real app, this would update a database
+    return jsonify({
+        'success': True,
+        'prediction_id': prediction_id,
+        'verified': data.get('verified', False),
+        'corrected_intent': data.get('corrected_intent'),
+        'admin_feedback': data.get('feedback'),
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/admin/historical-trends')
+def api_admin_historical_trends():
+    """
+    Get historical trend data for admin analysis.
+    Shows prediction accuracy over time and intent patterns.
+    """
+    # Generate 30 days of historical data
+    trends = []
+    base_users = 1000
+    
+    for days_ago in range(30, -1, -1):
+        date = datetime.now() - timedelta(days=days_ago)
+        trend = {
+            'date': date.strftime('%Y-%m-%d'),
+            'total_predictions': base_users + random.randint(-100, 300),
+            'builder_count': random.randint(200, 400),
+            'explorer_count': random.randint(150, 350),
+            'learner_count': random.randint(200, 450),
+            'abandoner_count': random.randint(50, 200),
+            'accuracy': round(random.uniform(0.75, 0.95), 3),
+            'high_confidence_rate': round(random.uniform(0.60, 0.85), 3),
+            'verified_count': random.randint(50, 150),
+            'corrections_made': random.randint(5, 30)
+        }
+        trends.append(trend)
+    
+    # Calculate weekly averages
+    weekly_averages = []
+    for week in range(4):
+        week_start = 28 - (week * 7)
+        week_end = 21 - (week * 7)
+        week_data = trends[week_end:week_start] if week_start < len(trends) else trends[:7]
+        
+        weekly_averages.append({
+            'week': f'Week {4-week}',
+            'avg_accuracy': round(sum(t['accuracy'] for t in week_data) / len(week_data), 3),
+            'avg_predictions': int(sum(t['total_predictions'] for t in week_data) / len(week_data)),
+            'total_corrections': sum(t['corrections_made'] for t in week_data)
+        })
+    
+    return jsonify({
+        'daily_trends': trends,
+        'weekly_averages': weekly_averages,
+        'summary': {
+            'avg_accuracy': round(sum(t['accuracy'] for t in trends) / len(trends), 3),
+            'total_predictions_30d': sum(t['total_predictions'] for t in trends),
+            'total_corrections_30d': sum(t['corrections_made'] for t in trends),
+            'accuracy_trend': 'improving' if trends[-1]['accuracy'] > trends[0]['accuracy'] else 'stable'
+        },
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/admin/reports')
+def api_admin_reports():
+    """
+    Generate comprehensive reports for administrators.
+    Provides insights into system performance and user behavior patterns.
+    """
+    # Generate report data
+    report_types = [
+        'prediction_accuracy',
+        'user_intent_distribution',
+        'admin_intervention_summary',
+        'system_performance',
+        'recommendations'
+    ]
+    
+    reports = []
+    for report_type in report_types:
+        report = {
+            'id': f'REPORT-{random.randint(1000, 9999)}',
+            'type': report_type,
+            'title': report_type.replace('_', ' ').title(),
+            'generated_at': datetime.now().isoformat(),
+            'period': 'Last 30 days',
+            'metrics': generate_report_metrics(report_type),
+            'insights': generate_report_insights(report_type)
+        }
+        reports.append(report)
+    
+    return jsonify({
+        'reports': reports,
+        'available_formats': ['JSON', 'CSV', 'PDF'],
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+def generate_report_metrics(report_type):
+    """Generate metrics for different report types"""
+    metrics_map = {
+        'prediction_accuracy': {
+            'overall_accuracy': round(random.uniform(0.80, 0.92), 3),
+            'high_confidence_accuracy': round(random.uniform(0.88, 0.96), 3),
+            'low_confidence_accuracy': round(random.uniform(0.55, 0.72), 3),
+            'verified_predictions': random.randint(800, 1500),
+            'corrections_submitted': random.randint(50, 200)
+        },
+        'user_intent_distribution': {
+            'builder_percentage': round(random.uniform(0.20, 0.35), 3),
+            'explorer_percentage': round(random.uniform(0.15, 0.28), 3),
+            'learner_percentage': round(random.uniform(0.25, 0.40), 3),
+            'abandoner_percentage': round(random.uniform(0.08, 0.18), 3),
+            'trend': 'stable'
+        },
+        'admin_intervention_summary': {
+            'total_interventions': random.randint(100, 300),
+            'successful_interventions': random.randint(60, 200),
+            'average_response_time': f'{random.randint(5, 30)} hours',
+            'most_common_action': random.choice(['feedback_correction', 'manual_override', 'rule_adjustment'])
+        },
+        'system_performance': {
+            'avg_prediction_time': f'{random.randint(50, 200)}ms',
+            'uptime': f'{random.uniform(99.5, 99.99):.2f}%',
+            'api_calls_today': random.randint(5000, 15000),
+            'active_models': random.randint(2, 5)
+        },
+        'recommendations': {
+            'model_improvement': 'Consider retraining with recent user data',
+            'feature_addition': 'Add more behavioral features for better accuracy',
+            'threshold_adjustment': 'Current confidence thresholds appear optimal',
+            'priority': 'medium'
+        }
+    }
+    return metrics_map.get(report_type, {})
+
+
+def generate_report_insights(report_type):
+    """Generate human-readable insights for reports"""
+    insights_map = {
+        'prediction_accuracy': [
+            'High-confidence predictions are highly reliable (88-96% accuracy)',
+            'Low-confidence predictions may benefit from additional feature engineering',
+            'Regular model retraining recommended for maintaining accuracy'
+        ],
+        'user_intent_distribution': [
+            'Builders represent the most engaged user segment',
+            'Abandoners show declining trend - intervention recommended',
+            'Learners show increased activity - educational content effective'
+        ],
+        'admin_intervention_summary': [
+            'Feedback loop is actively improving prediction quality',
+            'Most corrections are minor intent adjustments',
+            'Response time within acceptable SLA'
+        ],
+        'system_performance': [
+            'System running within normal parameters',
+            'Prediction latency within acceptable range',
+            'No critical issues detected'
+        ],
+        'recommendations': [
+            'Review low-confidence predictions for pattern identification',
+            'Consider A/B testing new prediction thresholds',
+            'Schedule quarterly model evaluation'
+        ]
+    }
+    return insights_map.get(report_type, [])
+
+
+@app.route('/api/admin/export', methods=['POST'])
+def api_admin_export():
+    """
+    Export prediction data in various formats.
+    Allows administrators to download data for offline analysis.
+    """
+    data = request.get_json()
+    export_format = data.get('format', 'json').upper()
+    data_type = data.get('type', 'predictions')
+    
+    # Generate sample export data
+    export_data = {
+        'predictions': [
+            {
+                'id': f'PRED-{i:05d}',
+                'user_id': f'USER-{i:03d}',
+                'intent': random.choice(['Builder', 'Explorer', 'Learner', 'Abandoner']),
+                'confidence': round(random.uniform(0.65, 0.98), 3),
+                'timestamp': (datetime.now() - timedelta(days=random.randint(0, 30))).isoformat()
+            }
+            for i in range(100)
+        ],
+        'metadata': {
+            'export_type': data_type,
+            'format': export_format,
+            'generated_at': datetime.now().isoformat(),
+            'record_count': 100
+        }
+    }
+    
+    return jsonify({
+        'success': True,
+        'format': export_format,
+        'data_type': data_type,
+        'download_url': f'/api/admin/download/{data_type}.{export_format.lower()}',
+        'record_count': 100,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/admin/settings')
+def api_admin_settings():
+    """
+    Get and update admin settings for the prediction system.
+    Allows configuration of thresholds and notification preferences.
+    """
+    return jsonify({
+        'settings': {
+            'confidence_thresholds': {
+                'high': 0.85,
+                'medium': 0.70,
+                'low': 0.50
+            },
+            'notifications': {
+                'email_alerts': True,
+                'low_confidence_alerts': True,
+                'anomaly_detection': True,
+                'daily_summary': True
+            },
+            'auto_verification': {
+                'enabled': False,
+                'min_confidence': 0.95
+            },
+            'model_settings': {
+                'retrain_frequency': 'weekly',
+                'include_feedback': True,
+                'min_training_samples': 1000
+            }
+        },
+        'available_options': {
+            'retrain_frequency': ['daily', 'weekly', 'monthly'],
+            'alert_channels': ['email', 'slack', 'webhook']
+        },
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/admin/settings', methods=['POST'])
+def api_admin_update_settings():
+    """
+    Update admin settings for the prediction system.
+    """
+    data = request.get_json()
+    
+    # In a real app, this would save to a database
+    return jsonify({
+        'success': True,
+        'message': 'Settings updated successfully',
+        'updated_settings': data,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+# Import AI Service
+try:
+    import ai_service
+    AI_SERVICE_AVAILABLE = True
+except ImportError:
+    AI_SERVICE_AVAILABLE = False
+
+
+# ==================== AI Model API Endpoints ====================
+
+@app.route('/api/ai/status')
+def ai_status():
+    """
+    Get AI model status - check which models are loaded
+    """
+    if not AI_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not available',
+            'models': {}
+        })
+    
+    status = ai_service.get_ai_status()
+    hf_token = ai_service.get_hf_token()
+    
+    return jsonify({
+        'success': True,
+        'available': status['hf_available'],
+        'models': status['models'],
+        'authenticated': hf_token is not None,
+        'token_configured': bool(hf_token)
+    })
+
+
+@app.route('/api/ai/summarize', methods=['POST'])
+def ai_summarize():
+    """
+    Summarize text using Hugging Face BART model
+    """
+    if not AI_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not available'
+        }), 500
+    
+    data = request.get_json()
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({
+            'success': False,
+            'error': 'No text provided'
+        }), 400
+    
+    max_length = data.get('max_length', 150)
+    min_length = data.get('min_length', 40)
+    
+    result = ai_service.summarize_text(text, max_length, min_length)
+    return jsonify(result)
+
+
+@app.route('/api/ai/sentiment', methods=['POST'])
+def ai_sentiment():
+    """
+    Analyze sentiment using Hugging Face DistilBERT model
+    """
+    if not AI_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not available'
+        }), 500
+    
+    data = request.get_json()
+    text = data.get('text', '')
+    
+    if not text:
+        return jsonify({
+            'success': False,
+            'error': 'No text provided'
+        }), 400
+    
+    result = ai_service.analyze_sentiment(text)
+    return jsonify(result)
+
+
+@app.route('/api/ai/generate', methods=['POST'])
+def ai_generate():
+    """
+    Generate text using Hugging Face GPT-2 model
+    """
+    if not AI_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not available'
+        }), 500
+    
+    data = request.get_json()
+    prompt = data.get('prompt', '')
+    
+    if not prompt:
+        return jsonify({
+            'success': False,
+            'error': 'No prompt provided'
+        }), 400
+    
+    max_new_tokens = data.get('max_tokens', 100)
+    temperature = data.get('temperature', 0.9)
+    top_p = data.get('top_p', 0.95)
+    
+    result = ai_service.generate_text(prompt, max_new_tokens, temperature, top_p)
+    return jsonify(result)
+
+
+@app.route('/api/ai/qa', methods=['POST'])
+def ai_qa():
+    """
+    Answer questions using Hugging Face DistilBERT QA model
+    """
+    if not AI_SERVICE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not available'
+        }), 500
+    
+    data = request.get_json()
+    context = data.get('context', '')
+    question = data.get('question', '')
+    
+    if not context or not question:
+        return jsonify({
+            'success': False,
+            'error': 'Both context and question are required'
+        }), 400
+    
+    result = ai_service.answer_question(context, question)
+    return jsonify(result)
+
+
+@app.route('/ai-tools')
+def ai_tools_page():
+    """AI Tools page showing available AI features"""
+    return render_template('index.html', page='ai-tools')
+
+
+@app.route('/admin')
+def admin_page():
+    """Admin dashboard page"""
+    return render_template('index.html', page='admin')
+
+
 if __name__ == '__main__':
     print("=" * 60)
     print("IntentScope - AI Analytics with Project Upload")
@@ -1001,7 +1527,11 @@ if __name__ == '__main__':
     print("  - Upload: Upload project folders (ZIP or files)")
     print("  - Projects: Browse and manage uploaded projects")
     print("  - Execute: Run Python and JavaScript files")
+    print("  - AI Tools: Text summarization, sentiment analysis, generation")
     print("=" * 60)
+    
+    if AI_SERVICE_AVAILABLE:
+        print("AI Models: Loading on first request...")
     
     port = int(os.environ.get('PORT', 5000))
     debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'

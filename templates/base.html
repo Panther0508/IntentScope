@@ -44,13 +44,23 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#analytics">
+                        <a class="nav-link" href="#" onclick="switchTabAndScroll('dashboard', 'analytics'); return false;">
                             <i class="fas fa-chart-bar me-1"></i>Analytics
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="#predictions">
+                        <a class="nav-link" href="#" onclick="switchTabAndScroll('dashboard', 'predictions'); return false;">
                             <i class="fas fa-crystal-ball me-1"></i>Predictions
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="switchTab('ai-tools'); return false;">
+                            <i class="fas fa-robot me-1"></i>AI Tools
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" onclick="switchTab('admin'); return false;">
+                            <i class="fas fa-user-shield me-1"></i>Admin
                         </a>
                     </li>
                 </ul>
@@ -78,8 +88,8 @@
                                     class="fas fa-cloud-upload-alt me-2"></i>Upload Projects</a></li>
                         <li><a href="#" onclick="switchTab('execute'); return false;"><i
                                     class="fas fa-play me-2"></i>Execute Code</a></li>
-                        <li><a href="#analytics"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
-                        <li><a href="#predictions"><i class="fas fa-crystal-ball me-2"></i>Predictions</a></li>
+                        <li><a href="#" onclick="switchTabAndScroll('dashboard', 'analytics'); return false;"><i class="fas fa-chart-bar me-2"></i>Analytics</a></li>
+                        <li><a href="#" onclick="switchTabAndScroll('dashboard', 'predictions'); return false;"><i class="fas fa-crystal-ball me-2"></i>Predictions</a></li>
                     </ul>
                 </div>
                 <div class="col-md-4">
@@ -101,6 +111,15 @@
 
     <!-- Global tab switching function -->
     <script>
+        // Handle initial page parameter on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialPage = urlParams.get('page');
+            if (initialPage) {
+                switchTab(initialPage);
+            }
+        });
+
         function switchTab(tabId) {
             // Update nav links
             document.querySelectorAll('.nav-link').forEach(link => {
@@ -133,8 +152,27 @@
                 tab.show();
             }
 
+            // Update URL without reloading
+            const url = new URL(window.location);
+            url.searchParams.set('page', tabId);
+            window.history.pushState({}, '', url);
+
             // Smooth scroll to top
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Switch to a tab and scroll to a specific section within it
+        function switchTabAndScroll(tabId, sectionId) {
+            // First switch to the tab
+            switchTab(tabId);
+            
+            // Then scroll to the section after a brief delay to allow tab to render
+            setTimeout(() => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
         }
     </script>
 
