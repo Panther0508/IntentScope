@@ -3,7 +3,7 @@ services:
     name: intentscope
     env: python
     region: oregon
-    buildCommand: cd . && pip install torch --index-url https://download.pytorch.org/whl/cpu && pip install -r requirements.txt
+    buildCommand: cd . && chmod +x build.sh && ./build.sh
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120
     runtime: python-3.12
     envVars:
