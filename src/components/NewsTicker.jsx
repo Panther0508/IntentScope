@@ -17,17 +17,18 @@ function NewsTicker() {
     return () => clearInterval(interval)
   }, [])
 
-  if (articles.length === 0) return null
-
-  const article = articles[currentIdx]
-
   // Rotate every 5 seconds
   useEffect(() => {
+    if (articles.length === 0) return
     const timer = setInterval(() => {
       setCurrentIdx((i) => (i + 1) % articles.length)
     }, 5000)
     return () => clearInterval(timer)
   }, [articles.length])
+
+  if (articles.length === 0) return null
+
+  const article = articles[currentIdx]
 
   // Truncate title
   const maxLen = 60

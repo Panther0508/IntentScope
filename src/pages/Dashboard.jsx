@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useSensor } from '../context/SensorContext'
 import NewsTicker from '../components/NewsTicker'

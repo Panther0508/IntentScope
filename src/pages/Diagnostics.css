@@ -1,0 +1,108 @@
+/* Diagnostics page styles */
+.diagnostics-page {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.diagnostics-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1rem;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.stat-item .label {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+
+.stat-item .value {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+}
+
+.test-results {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.test-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0,0,0,0.3);
+  border-radius: 4px;
+}
+
+.test-row.pass { border-left: 3px solid #4ade80; }
+.test-row.fail { border-left: 3px solid #f87171; }
+.test-row.warn { border-left: 3px solid #fbbf24; }
+
+.badge {
+  font-size: 0.7rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-weight: bold;
+}
+.badge-pass { background: #4ade80; color: #000; }
+.badge-fail { background: #f87171; color: #000; }
+.badge-warn { background: #fbbf24; color: #000; }
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.metrics-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.metrics-table tr:last-child td { border-bottom: none; }
+.metrics-table td:first-child {
+  color: var(--color-muted);
+}
+
+.log-list {
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 80px 100px 1fr;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.log-entry:last-child { border-bottom: none; }
+
+.log-time { color: var(--color-muted); }
+.log-source { color: var(--color-gold); }
+.log-msg { color: var(--color-text); }
+
+.log-error .log-msg { color: #f87171; }
+.log-warn .log-msg { color: #fbbf24; }

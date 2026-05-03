@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSensor } from '../context/SensorContext'
 import * as webllm from '@mlc-ai/web-llm'
-import { getLatestHeadlines, buildNewsQuery } from '../services/newsEngine'
+import { getLatestHeadlines } from '../services/newsEngine'
+import { setNarration } from '../utils/devStateStore.js'
 
 function AINarrator() {
   const { fusionActive, fusionResult } = useSensor()
@@ -43,6 +44,7 @@ function AINarrator() {
   }, [])
 
   // Auto-generate narration when fusion updates (throttled)
+   
   useEffect(() => {
     if (!isModelReady || !fusionActive || !fusionResult || isGenerating) return
 
@@ -55,7 +57,6 @@ function AINarrator() {
       const deceptionP = fusionResult.deceptionProbability
 
       // Fetch relevant news headlines
-      const newsQuery = buildNewsQuery({ intentProbabilities: fusionResult.intentProbabilities, deceptionProbability: deceptionP })
       const headlines = await getLatestHeadlines(5)
 
       const newsContext = headlines.map(h => `• ${h.title}`).join('\n')
@@ -129,11 +130,24 @@ Interpret the user's mental state in one paragraph, considering possible decepti
 
     // Debounce: only generate if top intent changed or deception crossed threshold
     generateNarration()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fusionResult?.topIntent, fusionResult?.deceptionProbability])
 
   // Auto-scroll to bottom
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages])
+
+  // Push latest narration to devStateStore (dev-only)
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const latestMsg = messages.filter(m => m.role === 'assistant').pop()
+    if (latestMsg) {
+      setNarration({
+        latestNarration: latestMsg.content,
+        lastUpdated: Date.now()
+      })
+    }
   }, [messages])
 
   return (

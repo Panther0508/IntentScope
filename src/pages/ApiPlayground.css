@@ -1,0 +1,87 @@
+/* API Playground page styles */
+.api-playground-page h2 {
+  margin-bottom: 0.5rem;
+  color: var(--color-gold);
+}
+
+.endpoint-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.endpoint-card {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.endpoint-card h4 {
+  margin: 0 0 0.25rem 0;
+  color: var(--color-gold);
+}
+
+.endpoint-path {
+  font-family: var(--font-mono);
+  background: rgba(212,175,55,0.15);
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.curl-example {
+  font-size: 0.75rem;
+  background: var(--color-dark);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.response-area {
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+}
+
+.json-output {
+  background: var(--color-dark);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.85rem;
+  max-height: 400px;
+}
+
+.error {
+  color: #f87171;
+  background: rgba(248,113,113,0.1);
+  padding: 0.75rem;
+  border-radius: 6px;
+}
+
+.api-info {
+  background: rgba(212,175,55,0.05);
+  border-color: var(--color-gold);
+}
+
+.api-info h3 {
+  margin-top: 0;
+  color: var(--color-gold);
+}
+
+.bash-example {
+  background: var(--color-dark);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+}

@@ -1,9 +1,11 @@
 /**
  * Sensor Aggregator
  * Collects streams from face, voice, and keyboard modules, aligns them by timestamp,
- * maintains a sliding window of timesteps, and produces the 28-feature vector
+ * maintains a sliding window of timesteps, and produces the 29-feature vector
  * expected by the fusion model.
  */
+
+const FEATURE_DIM = 29
 
 class SensorAggregator {
   constructor(windowSize = 50) {
@@ -53,13 +55,13 @@ class SensorAggregator {
   }
 
   /**
-   * Convert the most recent timestep into a 28-element feature vector.
+   * Convert the most recent timestep into a 29-element feature vector.
    * Fills missing modalities with defaults (zeros or mean values).
-   * @returns {Float32Array} 28-element feature vector
+   * @returns {Float32Array} 29-element feature vector
    */
   getLatestVector() {
     if (this.buffer.length === 0) {
-      return new Float32Array(28).fill(0)
+      return new Float32Array(FEATURE_DIM).fill(0)
     }
 
     const latest = this.buffer[this.buffer.length - 1]
@@ -114,51 +116,33 @@ class SensorAggregator {
     return vec
   }
 
-  /**
-   * Get a multi-timestep tensor for model input.
-   * @returns {Float32Array} shape (1, windowSize, 28) ready for ONNX
-   */
-  getTensorInput() {
-    const frames = this.buffer.length
-    if (frames < this.windowSize) {
-      // Pad with zeros at the beginning
-      const padding = this.windowSize - frames
-      const padded = []
-      for (let i = 0; i < padding; i++) {
-        padded.push(new Float32Array(28).fill(0))
-      }
-      for (const entry of this.buffer) {
-        const latest = entry
-        // Reuse getLatestVector logic per entry
-        const safe = (obj, key, defaultVal) => (obj && obj[key] !== undefined) ? obj[key] : defaultVal
-        const au = latest.face?.au || {}
-        const vec = new Float32Array([
-          safe(au, 'AU1', 0), safe(au, 'AU2', 0), safe(au, 'AU12', 0),
-          safe(au, 'AU15', 0), safe(au, 'AU20', 0), safe(au, 'AU26', 0),
-          safe(latest.face, 'gaze_x', 0.5), safe(latest.face, 'gaze_y', 0.5),
-          ...(Array.isArray(latest.voice?.mfcc) ? latest.voice.mfcc.slice(0, 13).map(v => Math.max(-1, Math.min(1, v))) : Array(13).fill(0)),
-          safe(latest.voice, 'pitch', 200), safe(latest.voice, 'loudness', 0.3),
-          safe(latest.voice, 'jitter', 0.01), safe(latest.voice, 'shimmer', 0.02),
-          safe(latest.keyboard, 'interKeyInterval', 200),
-          safe(latest.keyboard, 'holdDuration', 100),
-          safe(latest.keyboard, 'variance', 20),
-          safe(latest.keyboard, 'typingSpeed', 2)
-        ])
-        padded.push(vec)
-      }
-      // Create tensor from padded
-      return new Float32Array(padded.flat())
-    }
+   /**
+    * Get a multi-timestep tensor for model input.
+    * @returns {Float32Array} shape (1, windowSize, FEATURE_DIM) ready for ONNX
+    */
+   getTensorInput() {
+     const frames = this.buffer.length
+     if (frames < this.windowSize) {
+       // Pad with zeros at the beginning; tensor has windowSize timesteps
+       const tensor = new Float32Array(this.windowSize * FEATURE_DIM)
+       const startOffset = (this.windowSize - frames) * FEATURE_DIM
+       for (let i = 0; i < frames; i++) {
+         const entry = this.buffer[i]
+         const vec = this._vectorFromEntry(entry)
+         tensor.set(vec, startOffset + i * FEATURE_DIM)
+       }
+       return tensor
+     }
 
-    // Buffer is full, just get latest vector repeated? Actually for temporal model we need all timesteps
-    const tensor = new Float32Array(this.windowSize * 28)
-    for (let i = 0; i < this.windowSize; i++) {
-      const entry = this.buffer[i]
-      const vec = this._vectorFromEntry(entry)
-      tensor.set(vec, i * 28)
-    }
-    return tensor
-  }
+     // Buffer is full: fill entire tensor
+     const tensor = new Float32Array(this.windowSize * FEATURE_DIM)
+     for (let i = 0; i < this.windowSize; i++) {
+       const entry = this.buffer[i]
+       const vec = this._vectorFromEntry(entry)
+       tensor.set(vec, i * FEATURE_DIM)
+     }
+     return tensor
+   }
 
   _vectorFromEntry(entry) {
     const safe = (obj, key, defaultVal) => (obj && obj[key] !== undefined) ? obj[key] : defaultVal

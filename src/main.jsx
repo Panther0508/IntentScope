@@ -16,3 +16,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>,
 )
+
+// Initialize API bridge after mount (access SensorContext via DOM hook)
+setTimeout(() => {
+  // We'll inject the bridge from SensorContext once rendered
+}, 100)

@@ -17,12 +17,16 @@
  *
  *   { type: 'error', message: string }
  *   { type: 'ready' } when model loaded
+ *
+ * FALLBACK: If ONNX model fails to load, operates in simulation mode
+ * using a weighted heuristic based on recent sensor statistics.
  */
 
 import { InferenceSession, Tensor } from 'onnxruntime-web'
 
 let session = null
 let isReady = false
+let useSimulation = false  // Flag for fallback mode
 let inputName = 'input'
 let outputNames = ['intent_logits', 'embedding']
 
@@ -31,6 +35,8 @@ const INTENT_LABELS = [
   'Exploring', 'BuyIntent', 'Hesitation', 'Deception',
   'ActionConfirm', 'RobotPick', 'RobotPlace', 'RobotIdle'
 ]
+
+// Simulation mode: TODO: add temporal history for smoothing
 
 /**
  * Softmax helper (in case ONNX doesn't include it)
@@ -43,8 +49,93 @@ function softmax(arr) {
 }
 
 /**
+ * Generate a deterministic embedding from current stats (simulation fallback)
+ */
+function generateEmbedding(stats) {
+  // Pseudo-random but deterministic based on stats
+  const seed = stats.reduce((a, b) => a + Math.abs(b), 0) * 1000
+  const embedding = new Float32Array(32)
+  for (let i = 0; i < 32; i++) {
+    embedding[i] = Math.sin(seed + i) * 0.5 + 0.5
+  }
+  return embedding
+}
+
+/**
+ * Heuristic intent prediction based on sensor feature statistics
+ * Used when ONNX model is unavailable.
+ */
+function simulateIntent(tensorData) {
+  // Extract key features (approximate indices based on sensorAggregator)
+  // Indices: 0-12 MFCC mean, 13 pitch mean, 14 loudness mean, 15-18 AU mean, 19-20 gaze mean, 21-27 keyboard stats
+  const mfccMean = tensorData.slice(0, 13).reduce((a, b) => a + b, 0) / 13
+  const pitchMean = tensorData[13]
+  const loudnessMean = tensorData[14]
+  const browRaise = tensorData[16]  // AU: brow raise
+  const eyeGazeX = tensorData[19]
+  const eyeGazeY = tensorData[20]
+  const typingSpeed = tensorData[24]  // typing_speed norm
+  const hesitation = tensorData[27]   // hesitation_score
+
+  // Normalize approximate ranges
+  // Features roughly in [-1,1] or [0,1] from aggregator
+
+  // Initialize logits with base
+  const logits = new Array(8).fill(0)
+
+  // Heuristics:
+  // - High brow raise + steady gaze → Exploring/interest
+  if (browRaise > 0.3 && Math.abs(eyeGazeX) < 0.3) {
+    logits[0] += 2.0  // Exploring
+  }
+  // - High pitch + loudness variability → Hesitation/BuyIntent
+  if (pitchMean > 0.6 && loudnessMean > 0.5) {
+    logits[2] += 1.5  // Hesitation
+    logits[1] += 1.0  // BuyIntent
+  }
+  // - Low pitch + steady typing → ActionConfirm/RobotPick
+  if (pitchMean < 0.4 && typingSpeed > 0.6) {
+    logits[4] += 1.5  // ActionConfirm
+    logits[5] += 1.0  // RobotPick
+  }
+  // - High hesitation score → Deception
+  if (hesitation > 0.6) {
+    logits[3] += 2.5  // Deception
+  }
+  // - Gaze looking down/away + high AU → RobotPlace
+  if (eyeGazeY > 0.4 && browRaise < 0) {
+    logits[6] += 1.0  // RobotPlace
+  }
+  // Default to RobotIdle if nothing strong
+  if (logits.every(v => v === 0)) {
+    logits[7] = 1.0  // RobotIdle
+  }
+
+  const probs = softmax(logits)
+  const intentProbabilities = {}
+  INTENT_LABELS.forEach((label, i) => {
+    intentProbabilities[label] = probs[i]
+  })
+
+  const confidence = Math.max(...probs)
+  const deceptionProbability = intentProbabilities['Deception']
+
+  // Stats for embedding generation
+  const stats = [mfccMean, pitchMean, loudnessMean, browRaise, eyeGazeX, eyeGazeY, typingSpeed, hesitation]
+  const embedding = generateEmbedding(stats)
+
+  return {
+    intentProbabilities,
+    embedding,
+    confidence,
+    deceptionProbability
+  }
+}
+
+/**
  * Initialise the ONNX model.
  * Loads from public/fusion_model.onnx (served as static asset).
+ * Falls back to simulation mode if model fails to load.
  */
 async function initModel() {
   try {
@@ -54,7 +145,7 @@ async function initModel() {
     const modelUrl = '/fusion_model.onnx'
 
     session = await InferenceSession.create(modelUrl, {
-      executionProviders: ['wasm', 'webgl', 'cpu'],  // prefer WASM for确定性
+      executionProviders: ['wasm', 'webgl', 'cpu'],  // prefer WASM for determinism
       graphOptimizationLevel: 'all'
     })
 
@@ -63,11 +154,18 @@ async function initModel() {
 
     console.log(`[FusionWorker] Model loaded. Input: ${inputName}, Outputs: ${outputNames.join(', ')}`)
     isReady = true
-    self.postMessage({ type: 'ready' })
+    useSimulation = false
+    self.postMessage({ type: 'ready', mode: 'onnx' })
 
   } catch (err) {
-    console.error('[FusionWorker] Model load error:', err)
-    self.postMessage({ type: 'error', message: `ONNX model failed to load: ${err.message}` })
+    console.warn('[FusionWorker] ONNX load failed, entering simulation mode:', err.message)
+    useSimulation = true
+    isReady = true  // Still ready, just using heuristics
+    self.postMessage({
+      type: 'ready',
+      mode: 'simulation',
+      warning: 'Using heuristic fallback – real model not found. Train it: python training/train_fusion_model.py'
+    })
   }
 }
 
@@ -89,12 +187,24 @@ function prepareTensor(data) {
 
 /**
  * Run a single inference pass.
+ * Uses ONNX if loaded, otherwise simulation heuristic.
  */
 async function infer(tensor) {
-  if (!session || !isReady) {
+  if (!isReady) {
     throw new Error('Model not ready')
   }
 
+  // Simulation mode: use heuristic
+  if (useSimulation) {
+    const flatData = Array.from(tensor.data)
+    const result = simulateIntent(flatData)
+    return {
+      ...result,
+      timestamp: performance.now()
+    }
+  }
+
+  // ONNX mode
   const feeds = { [inputName]: tensor }
   const results = await session.run(feeds)
 

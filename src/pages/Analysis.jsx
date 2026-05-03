@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSensor } from '../context/SensorContext'
 
 function Analysis() {
-  const { sensorActive, faceData, voiceData, keyboardData, bufferFill, fusionActive, fusionResult, aggregator } = useSensor()
+  const { sensorActive, faceData, bufferFill, fusionActive, fusionResult, aggregator } = useSensor()
   const [logs, setLogs] = useState([
     { time: new Date(), text: 'System initialized...' },
     { time: new Date(), text: 'Waiting for camera...' },
@@ -18,7 +18,7 @@ function Analysis() {
   useEffect(() => {
     if (!sensorActive) return
 
-    const unsubscribe = aggregator.subscribe((buffer, vector) => {
+    const unsubscribe = aggregator.subscribe((buffer) => {
       if (buffer.length % 10 === 0) {
         const latest = buffer[buffer.length - 1]
         const hasFace = !!latest?.face

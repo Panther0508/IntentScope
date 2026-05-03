@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useSensor } from '../context/SensorContext'
+import { setRobot } from '../utils/devStateStore.js'
 
 function RobotLab() {
   const { fusionActive, fusionResult } = useSensor()
   const [mode, setMode] = useState('intent') // 'intent' | 'expression'
   const [robotState, setRobotState] = useState({ action: 'idle', target: null })
-
-  // Interpret top intent
-  const topIntent = fusionResult
-    ? Object.entries(fusionResult.intentProbabilities).reduce((a, b) => a[1] > b[1] ? a : b)[0]
-    : null
 
   // Simple state machine for robot behavior based on intent
   useEffect(() => {
@@ -17,6 +13,9 @@ function RobotLab() {
 
     const confidence = fusionResult.confidence
     const deception = fusionResult.deceptionProbability
+    const topIntent = fusionResult.intentProbabilities
+      ? Object.entries(fusionResult.intentProbabilities).reduce((a, b) => a[1] > b[1] ? a : b)[0]
+      : null
 
     // Deception causes robot to enter "suspicious" posture
     if (deception > 0.6) {
@@ -32,6 +31,18 @@ function RobotLab() {
       setRobotState({ action: 'idle', target: null })
     }
   }, [fusionResult, mode, fusionActive])
+
+  // Push robot state to devStateStore (dev-only)
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      setRobot({
+        currentAction: robotState.action,
+        target: robotState.target,
+        jointAngles: [], // Not tracked in this UI; could be populated if available
+        mode: mode
+      })
+    }
+  }, [robotState, mode])
 
   return (
     <div className="robot-lab">

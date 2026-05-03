@@ -10,7 +10,7 @@ const CHALLENGE_QUESTIONS = [
 ]
 
 function DeceptionChallenge() {
-  const { sensorActive, fusionActive, fusionResult, startSensors, stopSensors } = useSensor()
+  const { sensorActive, fusionActive, fusionResult, startSensors } = useSensor()
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0)
   const [phase, setPhase] = useState('idle') // idle, question, answering, result
   const [answer, setAnswer] = useState(null)
@@ -28,6 +28,7 @@ function DeceptionChallenge() {
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const startQuestion = () => {
@@ -48,7 +49,6 @@ function DeceptionChallenge() {
     // Evaluate deception based on fusion model (ground truth unknown)
     if (fusionActive && fusionResult) {
       const deceptionProb = fusionResult.deceptionProbability
-      const predictedDeception = deceptionProb > 0.5
       // Verdict: if user said truth but model thinks lying → potential deception
       // Simplified: verdict based purely on probability (we don't know actual truth)
       const verdictText = deceptionProb > 0.6

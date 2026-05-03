@@ -8,13 +8,9 @@
 
 import { db } from '../db'
 
-// Article table schema
-const ARTICLES_STORE = 'news'
+// Article table schema is defined in db.js (version 2 includes 'news' store)
 
-// Ensure table exists
-db.version(1).stores({
-  news: '++id, title, url, source, snippet, timestamp, keywords'
-})
+// Ensure table exists – Dexie automatically creates stores when first used; no action needed.
 
 const SOURCES = {
   HACKER_NEWS: 'HN',
@@ -137,6 +133,9 @@ export async function refreshNews() {
     console.error('[NewsEngine] DB write error:', err)
   }
 
+  // Update dev state with cache size (handled by SensorContext bridge)
+  // Note: In a more robust implementation we'd compute actual DB size here.
+
   return all
 }
 
@@ -243,4 +242,47 @@ export async function getNewsDigest(count = 5) {
     refreshNews()
   }
   return latest
+}
+
+/**
+ * Clear all cached news articles
+ */
+export async function clearCache() {
+  try {
+    await db.news.clear()
+    console.log('[NewsEngine] Cache cleared')
+    return true
+  } catch (err) {
+    console.error('[NewsEngine] Cache clear failed:', err)
+    return false
+  }
+}
+
+/**
+ * Get current cache size in human-readable format
+ */
+export async function getCacheSize() {
+  try {
+    const count = await db.news.count()
+    const bytes = count * 512 // rough estimate: ~512 bytes per article
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  } catch (err) {
+    return '0 B'
+  }
+}
+
+/**
+ * Export all news cache as downloadable JSON
+ */
+export async function exportCacheAsJSON() {
+  const all = await db.news.toArray()
+  const blob = new Blob([JSON.stringify(all, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `intentscope-news-export-${new Date().toISOString().slice(0,10)}.json`
+  a.click()
+  URL.revokeObjectURL(url)
 }
