@@ -1,104 +1,205 @@
 /* Additional component styles and utility fixes */
 
-/* Ensure all card children fill properly */
+/* Card children */
 .card h3 {
   margin-bottom: 1rem;
   font-size: 1rem;
   color: var(--gold-primary);
 }
 
-/* Terminal inside cards */
+/* Terminal lines */
 .terminal p {
   margin-bottom: 0.5rem;
 }
 
-/* Shimmer animation */
+/* Shimmer keyframes */
 @keyframes shimmer {
   0% { left: -100%; }
   100% { left: 100%; }
 }
 
-/* Robot Lab Grid */
-.robot-lab {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1.5rem;
-  height: calc(100vh - 180px);
-  margin-top: 1rem;
+/* Dashboard header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
 }
 
-.robot-viewport {
-  background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+.video-wrapper {
   position: relative;
+  width: 100%;
+  height: 240px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
-/* Analysis layout */
+.video-wrapper video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.gaze-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.prediction-content {
+  padding: 1rem 0;
+}
+
+.prediction-label {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.buffer-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+}
+
+/* Voice meter */
+.meter-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: auto;
+  padding: 1rem 0;
+}
+
+.meter-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.meter-fill {
+  flex: 1;
+  height: 20px;
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-primary));
+  border-radius: var(--radius-sm);
+  transition: height 0.3s ease;
+  min-height: 2px;
+}
+
+.meter-bar span:last-child {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* Analysis page */
 .analysis-layout {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 1.5rem;
 }
 
-/* Dashboard grid */
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 1.5rem;
-}
-
-/* Placeholder area styling */
-.sensor-placeholder {
-  min-height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1rem;
-  color: var(--text-secondary);
-  border: 1px dashed var(--gold-dark);
-  border-radius: var(--radius-sm);
-  padding: 1rem;
-  position: relative;
-  overflow: hidden;
-}
-
-.sensor-placeholder.large {
+.analysis-main {
   min-height: 400px;
 }
 
-/* Confidence bar */
-.confidence-bar {
-  width: 100%;
-  height: 12px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
+.live-details {
+  padding: 1rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.au-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
   margin-top: 1rem;
 }
 
-.bar-fill {
+.au-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.au-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.au-bar-bg {
+  height: 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.au-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, var(--gold-dark), var(--gold-primary));
-  transition: width 0.5s ease-out;
+  transition: width 0.2s ease;
 }
 
-/* Terminal in narrator snippet */
-.terminal {
+/* Log panel */
+.analysis-log {
+  max-height: 500px;
+  display: flex;
+  flex-direction: column;
+}
+
+.log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.buffer-count {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
-  line-height: 1.8;
-  color: var(--text-secondary);
+  font-size: 0.8rem;
+  color: var(--gold-primary);
 }
 
-.prompt {
-  color: var(--gold-primary);
+.log-stream {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.log-stream p {
+  margin-bottom: 0.25rem;
+}
+
+.log-time {
+  color: var(--gold-dark);
   margin-right: 0.5rem;
 }
 
-/* Disabled buttons */
+/* Buttons */
 .btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   transform: none !important;
   box-shadow: none !important;
+}
+
+/* Error banner */
+.error-banner {
+  padding: 1rem 1.5rem;
+  border-left: 4px solid var(--accent-red);
 }

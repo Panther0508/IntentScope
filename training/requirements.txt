@@ -1,0 +1,19 @@
+# IntentScope Training Pipeline Dependencies
+# Generated following the original codebase's libraries (pandas, numpy, sklearn, tensorflow/keras)
+# Note: switched from TensorFlow to PyTorch for better ONNX export support
+
+numpy>=1.21.0
+pandas>=1.3.0
+scikit-learn>=1.0.0
+torch>=2.0.0
+torchvision>=0.15.0  # optional, for completeness
+onnx>=1.15.0
+onnxruntime>=1.16.0
+tqdm>=4.64.0  # optional progress bars
+
+# Optional: for SHAP feature importance analysis (used in original project)
+# Uncomment if needed:
+# shap>=0.42.0
+
+# Optional: for TensorFlow-based models (original LSTM implementation)
+# tensorflow>=2.10.0
