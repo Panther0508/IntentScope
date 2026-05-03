@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSensor } from '../context/SensorContext'
+import NewsTicker from '../components/NewsTicker'
 
 function Dashboard() {
   const {
@@ -12,12 +13,12 @@ function Dashboard() {
     bufferFill,
     startSensors,
     stopSensors,
-    getLatestVector
+    fusionActive,
+    fusionResult
   } = useSensor()
 
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
-  const [prediction, setPrediction] = useState({ label: null, confidence: 0 })
 
   // Draw webcam with gaze overlay
   useEffect(() => {
@@ -40,7 +41,7 @@ function Dashboard() {
 
           ctx.beginPath()
           ctx.arc(x, y, 12, 0, Math.PI * 2)
-          ctx.fillStyle = '#D4AF37'  // gold
+          ctx.fillStyle = '#D4AF37'
           ctx.shadowColor = '#D4AF37'
           ctx.shadowBlur = 15
           ctx.fill()
@@ -52,8 +53,7 @@ function Dashboard() {
           ctx.beginPath()
           ctx.moveTo(x - 20, y)
           ctx.lineTo(x + 20, y)
-          ctx.moveTo(x, y - 20)
-          ctx.lineTo(x, y + 20)
+          ctx.moveTo(x, y + 20)
           ctx.stroke()
         }
       }
@@ -63,22 +63,11 @@ function Dashboard() {
     draw()
   }, [sensorActive, faceData])
 
-  // Predict intent periodically when buffer has data
-  useEffect(() => {
-    if (bufferFill >= 50 && getLatestVector) {
-      // Placeholder prediction – in Phase 3 we'll load ONNX model
-      const vector = getLatestVector()
-      // Dummy: pick class based on high AU12 (smile) or high AU26 (jaw drop)
-      const au12 = vector[2]
-      const au26 = vector[5]
-      let label = 'Exploring'
-      let confidence = 25
-      if (au12 > 0.6) { label = 'BuyIntent'; confidence = 90 }
-      else if (au26 > 0.5) { label = 'Deception'; confidence = 75 }
-      else if (vector[25] < 100) { label = 'Hesitation'; confidence = 60 }
-      setPrediction({ label, confidence })
-    }
-  }, [bufferFill, getLatestVector])
+  // Extract top intent from fusion result
+  const topIntent = fusionResult
+    ? Object.entries(fusionResult.intentProbabilities).reduce((a, b) => a[1] > b[1] ? a : b)[0]
+    : null
+  const confidence = fusionResult ? Math.round(fusionResult.confidence * 100) : 0
 
   return (
     <div className="container">
@@ -93,8 +82,11 @@ function Dashboard() {
         </div>
       </div>
 
+      {/* News ticker – shows world context */}
+      <NewsTicker />
+
       {sensorError && (
-        <div className="error-banner card" style={{ marginBottom: '1.5rem', color: '#ff4d4d' }}>
+        <div className="error-banner" style={{ marginBottom: '1.5rem', color: '#ff4d4d' }}>
           {sensorError}
         </div>
       )}
@@ -104,13 +96,7 @@ function Dashboard() {
         <div className="card">
           <h3 className="text-mono">Face Feed</h3>
           <div className="video-wrapper">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              style={{ display: sensorActive ? 'block' : 'none' }}
-            />
+            <video ref={videoRef} autoPlay muted playsInline style={{ display: sensorActive ? 'block' : 'none' }} />
             <canvas ref={canvasRef} className="gaze-canvas" />
             {!sensorActive && (
               <div className="sensor-placeholder">
@@ -124,17 +110,45 @@ function Dashboard() {
         <div className="card">
           <h3 className="text-mono">Intent Prediction</h3>
           <div className="prediction-content">
-            <p className="prediction-label">
-              {prediction.label
-                ? <span className="text-gold">{prediction.label}</span>
-                : <span className="text-muted">Waiting for data...</span>}
-            </p>
-            <div className="confidence-bar">
-              <div className="bar-fill" style={{ width: `${prediction.confidence}%` }}></div>
-            </div>
+            {fusionActive && topIntent ? (
+              <>
+                <p className="prediction-label text-gold">{topIntent}</p>
+                <div className="confidence-bar">
+                  <div className="bar-fill" style={{ width: `${confidence}%` }}></div>
+                </div>
+                <p className="confidence-text">Confidence: {confidence}%</p>
+              </>
+            ) : (
+              <p className="text-muted">Waiting for fusion model...</p>
+            )}
+
             <p className="buffer-status">
               Buffer: {bufferFill} / 50 timesteps
+              {fusionActive && <span className="fusion-indicator"> · Fusion Active</span>}
             </p>
+
+            {/* Deception gauge */}
+            {fusionActive && fusionResult.deceptionProbability !== undefined && (
+              <div className="deception-section">
+                <div className="deception-label">
+                  <span>Deception Probability</span>
+                  <span className="deception-value">
+                    {Math.round(fusionResult.deceptionProbability * 100)}%
+                  </span>
+                </div>
+                <div className="deception-gauge">
+                  <div
+                    className="deception-fill"
+                    style={{
+                      width: `${fusionResult.deceptionProbability * 100}%`,
+                      background: fusionResult.deceptionProbability > 0.5
+                        ? 'linear-gradient(90deg, #ff4d4d, #ff8888)'
+                        : 'linear-gradient(90deg, #D4AF37, #F5E6A3)'
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -191,8 +205,17 @@ function Dashboard() {
         <div className="card narrator-snippet">
           <h3 className="text-mono">AI Narrator Snippet</h3>
           <div className="terminal">
-            <p><span className="prompt">&gt;</span> {sensorActive ? 'Sensors active...' : 'Sensors idle.'}</p>
-            <p><span className="prompt">&gt;</span> {prediction.label ? `Intent: ${prediction.label}` : 'Awaiting prediction...'}</p>
+            {fusionActive ? (
+              <>
+                <p><span className="prompt">&gt;</span> Fusion active: {topIntent} detected.</p>
+                <p><span className="prompt">&gt;</span> Deception: {fusionResult.deceptionProbability > 0.3 ? '⚠ Elevated' : 'Normal'}</p>
+              </>
+            ) : (
+              <>
+                <p><span className="prompt">&gt;</span> Waiting for fusion model...</p>
+                <p><span className="prompt">&gt;</span> Initializing neural engine...</p>
+              </>
+            )}
           </div>
         </div>
       </div>

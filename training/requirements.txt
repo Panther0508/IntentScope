@@ -11,6 +11,13 @@ onnx>=1.15.0
 onnxruntime>=1.16.0
 tqdm>=4.64.0  # optional progress bars
 
+# Data acquisition and preprocessing
+opencv-python>=4.8.0  # video frame extraction
+mediapipe>=0.10.0     # facial landmarks (Python version)
+librosa>=0.10.0       # audio feature extraction (MFCC, pitch)
+requests>=2.31.0      # HTTP downloads
+Pillow>=10.0.0        # image handling
+
 # Optional: for SHAP feature importance analysis (used in original project)
 # Uncomment if needed:
 # shap>=0.42.0

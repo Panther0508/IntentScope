@@ -40,6 +40,7 @@ except ImportError:
 
 try:
     from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+    from sklearn.model_selection import train_test_split
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -144,14 +145,31 @@ class FusionModel(nn.Module):
 
 # ── Training Functions ─────────────────────────────────────────────────────
 def load_data():
-    """Load training and validation datasets."""
-    if not os.path.exists(DATA_DIR):
-        raise FileNotFoundError(f"Data directory '{DATA_DIR}' not found. Run generate_dataset.py first.")
+    """Load training and validation datasets.
+    Prefers combined (synthetic + real) data if available; falls back to synthetic-only.
+    """
+    combined_X_path = os.path.join(DATA_DIR, 'X_combined.npy')
+    combined_y_path = os.path.join(DATA_DIR, 'y_combined.npy')
 
-    X_train = np.load(os.path.join(DATA_DIR, 'X_train.npy'))
-    y_train = np.load(os.path.join(DATA_DIR, 'y_train.npy'))
-    X_val = np.load(os.path.join(DATA_DIR, 'X_val.npy'))
-    y_val = np.load(os.path.join(DATA_DIR, 'y_val.npy'))
+    if os.path.exists(combined_X_path) and os.path.exists(combined_y_path):
+        # Use combined dataset
+        print(f"\n[INFO] Loading combined dataset (synthetic + real)...")
+        X = np.load(combined_X_path)
+        y = np.load(combined_y_path)
+
+        # Split 80/20
+        from sklearn.model_selection import train_test_split
+        X_train, X_val, y_train, y_val = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+        print(f"  • Combined data: {X.shape} → {len(np.unique(y))} classes")
+    else:
+        # Fall back to synthetic splits
+        print(f"\n[INFO] Combined data not found – using synthetic train/val splits...")
+        X_train = np.load(os.path.join(DATA_DIR, 'X_train.npy'))
+        y_train = np.load(os.path.join(DATA_DIR, 'y_train.npy'))
+        X_val = np.load(os.path.join(DATA_DIR, 'X_val.npy'))
+        y_val = np.load(os.path.join(DATA_DIR, 'y_val.npy'))
 
     print(f"\n✓ Data loaded:")
     print(f"  • X_train: {X_train.shape}, dtype={X_train.dtype}")

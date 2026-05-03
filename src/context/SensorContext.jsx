@@ -1,12 +1,14 @@
-import { createContext, useContext, useState, useRef, useCallback } from 'react'
+import { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react'
 import SensorAggregator from '../utils/sensorAggregator'
 import { initKeyboardTracker } from '../utils/keyboardTracker'
+import { startPeriodicRefresh } from '../services/newsEngine'
 
 const SensorContext = createContext(null)
 
-// Worker file URLs (Vite special import)
+// Worker file URLs
 const FACE_WORKER_URL = new URL('../workers/faceWorker.js', import.meta.url)
 const VOICE_WORKER_URL = new URL('../workers/voiceWorker.js', import.meta.url)
+const FUSION_WORKER_URL = new URL('../workers/fusionWorker.js', import.meta.url)
 
 export function SensorProvider({ children }) {
   // State
@@ -17,15 +19,22 @@ export function SensorProvider({ children }) {
   const [keyboardData, setKeyboardData] = useState(null)
   const [bufferFill, setBufferFill] = useState(0)
 
+  // Fusion state
+  const [fusionActive, setFusionActive] = useState(false)
+  const [fusionResult, setFusionResult] = useState(null)
+  const [fusionError, setFusionError] = useState(null)
+
   // Refs to hold persistent objects
   const aggregatorRef = useRef(new SensorAggregator(50))
   const faceWorkerRef = useRef(null)
   const voiceWorkerRef = useRef(null)
+  const fusionWorkerRef = useRef(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const audioContextRef = useRef(null)
   const processorRef = useRef(null)
   const cleanupKeyboardRef = useRef(null)
+  const fusionLoopId = useRef(null)
 
   /**
    * Initialize and start all sensors.
@@ -127,11 +136,44 @@ export function SensorProvider({ children }) {
         }
         setBufferFill(aggregatorRef.current.getFillLevel())
       })
-      cleanupKeyboardRef.current = cleanupKeyboard
+       cleanupKeyboardRef.current = cleanupKeyboard
 
-      // 6. Subscribe aggregator to updates
+      // 7. Initialize Fusion Worker
+      const fusionWorker = new Worker(FUSION_WORKER_URL, { type: 'module' })
+      fusionWorkerRef.current = fusionWorker
+
+      fusionWorker.onmessage = (e) => {
+        const { type, intentProbabilities, embedding, confidence, deceptionProbability, timestamp } = e.data
+        if (type === 'result') {
+          setFusionResult({ intentProbabilities, embedding, confidence, deceptionProbability, timestamp })
+          setFusionActive(true)
+        } else if (type === 'error') {
+          console.error('[FusionWorker]', e.data.message)
+          setFusionError(e.data.message)
+        } else if (type === 'ready') {
+          console.log('[FusionWorker] Model ready – inference enabled')
+          setFusionActive(true)
+        }
+      }
+
+      fusionWorker.postMessage({ type: 'init' })
+
+      // 8. Start fusion inference loop at 20Hz (50ms interval)
+      const FUSION_INTERVAL_MS = 50
+      const runFusion = () => {
+        if (aggregatorRef.current.getFillLevel() >= 50) {
+          const tensor = aggregatorRef.current.getTensorInput()
+          fusionWorker.postMessage({ type: 'tensor', data: tensor })
+        }
+        fusionLoopId.current = requestAnimationFrame(runFusion)
+      }
+      // Use setTimeout to start after a small delay, then use RAF for timing
+      setTimeout(() => {
+        runFusion()
+      }, 500)
+
+      // 6. Subscribe aggregator to updates (kept for logging)
       aggregatorRef.current.subscribe((buffer, vector) => {
-        // Console log the combined vector periodically
         if (buffer.length % 10 === 0) {
           console.log('[Aggregator] Buffer:', buffer.length, '/50')
         }
@@ -166,17 +208,26 @@ export function SensorProvider({ children }) {
       audioContextRef.current = null
     }
 
-    // Terminate workers
-    if (faceWorkerRef.current) {
-      faceWorkerRef.current.postMessage({ type: 'close' })
-      faceWorkerRef.current.terminate()
-      faceWorkerRef.current = null
-    }
-    if (voiceWorkerRef.current) {
-      voiceWorkerRef.current.postMessage({ type: 'close' })
-      voiceWorkerRef.current.terminate()
-      voiceWorkerRef.current = null
-    }
+     // Terminate workers
+     if (faceWorkerRef.current) {
+       faceWorkerRef.current.postMessage({ type: 'close' })
+       faceWorkerRef.current.terminate()
+       faceWorkerRef.current = null
+     }
+     if (voiceWorkerRef.current) {
+       voiceWorkerRef.current.postMessage({ type: 'close' })
+       voiceWorkerRef.current.terminate()
+       voiceWorkerRef.current = null
+     }
+     if (fusionWorkerRef.current) {
+       fusionWorkerRef.current.postMessage({ type: 'close' })
+       fusionWorkerRef.current.terminate()
+       fusionWorkerRef.current = null
+     }
+     if (fusionLoopId.current) {
+       cancelAnimationFrame(fusionLoopId.current)
+       fusionLoopId.current = null
+     }
 
     // Stop keyboard tracker
     if (cleanupKeyboardRef.current) {
@@ -195,6 +246,12 @@ export function SensorProvider({ children }) {
     console.log('[SensorContext] Sensors stopped')
   }, [])
 
+  // Start periodic news refresh on mount
+  useEffect(() => {
+    startPeriodicRefresh(5 * 60 * 1000) // every 5 minutes
+    return () => {}
+  }, [])
+
   const value = {
     sensorActive,
     sensorError,
@@ -207,7 +264,11 @@ export function SensorProvider({ children }) {
     aggregator: aggregatorRef.current,
     // Expose latest vector for model inference
     getLatestVector: () => aggregatorRef.current.getLatestVector(),
-    getTensorInput: () => aggregatorRef.current.getTensorInput()
+    getTensorInput: () => aggregatorRef.current.getTensorInput(),
+    // Fusion state
+    fusionActive,
+    fusionResult,
+    fusionError
   }
 
   return (

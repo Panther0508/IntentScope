@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSensor } from '../context/SensorContext'
 
 function Analysis() {
-  const { sensorActive, faceData, voiceData, keyboardData, bufferFill, aggregator } = useSensor()
+  const { sensorActive, faceData, voiceData, keyboardData, bufferFill, fusionActive, fusionResult, aggregator } = useSensor()
   const [logs, setLogs] = useState([
     { time: new Date(), text: 'System initialized...' },
     { time: new Date(), text: 'Waiting for camera...' },
@@ -11,7 +11,7 @@ function Analysis() {
 
   // Add a new log entry
   const addLog = (text) => {
-    setLogs(prev => [...prev.slice(-49), { time: new Date(), text }])  // keep last 50
+    setLogs(prev => [...prev.slice(-49), { time: new Date(), text }])
   }
 
   // Subscribe to sensor updates
@@ -19,13 +19,12 @@ function Analysis() {
     if (!sensorActive) return
 
     const unsubscribe = aggregator.subscribe((buffer, vector) => {
-      // Log at reduced frequency to avoid spam
       if (buffer.length % 10 === 0) {
         const latest = buffer[buffer.length - 1]
         const hasFace = !!latest?.face
         const hasVoice = !!latest?.voice
         const hasKb = !!latest?.keyboard
-        addLog(`[T+${buffer.length}] Face:${hasFace ? '✓' : '✗'} Voice:${hasFace ? '✓' : '✗'} KB:${hasKb ? '✓' : '✗'}`)
+        addLog(`[T+${buffer.length}] Face:${hasFace ? '✓' : '✗'} Voice:${hasVoice ? '✓' : '✗'} KB:${hasKb ? '✓' : '✗'}`)
       }
     })
 
@@ -44,7 +43,7 @@ function Analysis() {
       <div className="analysis-layout">
         {/* Face mesh area (simple video) */}
         <div className="card analysis-main">
-          <h3 className="text-mono">Sensor Feed</h3>
+          <h3 className="text-mono">Sensor Summary</h3>
           {sensorActive && faceData && (
             <div className="live-details">
               <div className="detail-row">
@@ -65,6 +64,29 @@ function Analysis() {
                   </div>
                 ))}
               </div>
+
+              {/* Deception meter */}
+              {fusionActive && fusionResult && (
+                <div className="deception-section">
+                  <div className="deception-label">
+                    <span>Deception Probability</span>
+                    <span className="deception-value">
+                      {Math.round(fusionResult.deceptionProbability * 100)}%
+                    </span>
+                  </div>
+                  <div className="deception-gauge">
+                    <div
+                      className="deception-fill"
+                      style={{
+                        width: `${fusionResult.deceptionProbability * 100}%`,
+                        background: fusionResult.deceptionProbability > 0.5
+                          ? 'linear-gradient(90deg, #ff4d4d, #ff8888)'
+                          : 'linear-gradient(90deg, #D4AF37, #F5E6A3)'
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
           {!sensorActive && (
@@ -103,3 +125,4 @@ function Analysis() {
 }
 
 export default Analysis
+
